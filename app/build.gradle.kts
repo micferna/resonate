@@ -213,7 +213,6 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.androidx.room.testing)
 
     // Tests instrumentés : ils valident le schéma Room et les cascades réelles de
     // SQLite, ce qu'un test JVM ne peut pas faire. Nécessitent un appareil ou un
@@ -221,4 +220,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlinx.coroutines.test)
+    // Tests de migration : instrumentés par nature, ils rejouent les migrations
+    // sur une base réellement écrite au format de la version précédente.
+    androidTestImplementation(libs.androidx.room.testing)
 }

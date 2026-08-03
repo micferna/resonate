@@ -102,6 +102,7 @@ class ResonateDatabaseTest {
                     tagsResolved = true,
                     searchKey = "vrai titre vrai artiste vrai album",
                     lastSeenAt = 2_000,
+                    folderPath = "/",
                 ),
             ),
             seenPatches = emptyList(),

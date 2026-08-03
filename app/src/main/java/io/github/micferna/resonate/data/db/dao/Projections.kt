@@ -72,6 +72,7 @@ data class TrackMetadataPatch(
     val tagsResolved: Boolean,
     val searchKey: String,
     val lastSeenAt: Long,
+    val folderPath: String,
 )
 
 /** Patch appliqué quand seule la présence du fichier est reconfirmée. */

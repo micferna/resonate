@@ -52,6 +52,8 @@ enum class OfflineState {
         Index("rating"),
         Index("offlineState"),
         Index("searchKey"),
+        Index("folderPath"),
+        Index("genre"),
         Index(value = ["sourceId", "remotePath"], unique = true),
     ],
 )
@@ -110,4 +112,14 @@ data class TrackEntity(
      * l'autre — d'autant plus marqués que les sources sont hétérogènes.
      */
     val replayGainDb: Float = 0f,
+
+    /**
+     * Dossier tel qu'il sera affiché, séparateurs compris.
+     *
+     * Stocké plutôt que recalculé : la source locale adresse ses fichiers par
+     * identifiant MediaStore, son chemin ne contient donc aucune arborescence.
+     * Une colonne dédiée fait cohabiter les deux familles de sources dans la même
+     * requête de regroupement, et se laisse indexer.
+     */
+    val folderPath: String = "/",
 )

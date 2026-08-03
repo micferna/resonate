@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.media3.datasource.DataSource
@@ -95,7 +96,7 @@ class LocalConnector @Inject constructor(
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.SIZE,
             MediaStore.Audio.Media.DISPLAY_NAME,
-        )
+        ) + optionalColumns()
 
         // `IS_MUSIC` écarte sonneries, notifications et sons d'alarme, qui n'ont rien
         // à faire dans une bibliothèque musicale. Le filtre sur la durée évite les
@@ -124,6 +125,9 @@ class LocalConnector @Inject constructor(
             val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
             val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+            // `getColumnIndex` et non `…OrThrow` : ces colonnes peuvent manquer.
+            val relativePathColumn = cursor.getColumnIndex(RELATIVE_PATH_COLUMN)
+            val genreColumn = cursor.getColumnIndex(GENRE_COLUMN)
 
             while (cursor.moveToNext()) {
                 coroutineContext.ensureActive()
@@ -137,10 +141,18 @@ class LocalConnector @Inject constructor(
                 val discNumber = if (rawTrack > 1000) rawTrack / 1000 else 0
                 val trackNumber = if (rawTrack > 1000) rawTrack % 1000 else rawTrack
 
+                val relativePath = relativePathColumn
+                    .takeIf { it >= 0 }
+                    ?.let { cursor.getString(it) }
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { "/" + it.trim('/') + "/" }
+                    ?: "/"
+
                 batch += RemoteAudioFile(
                     path = "/$id",
                     fileName = cursor.getString(nameColumn).orUnknown("$id"),
                     sizeBytes = cursor.getLong(sizeColumn),
+                    folder = relativePath,
                     metadata = RemoteMetadata(
                         title = cursor.getString(titleColumn).orUnknown("Sans titre"),
                         artist = artist,
@@ -149,7 +161,9 @@ class LocalConnector @Inject constructor(
                         trackNumber = trackNumber,
                         discNumber = discNumber,
                         year = cursor.getInt(yearColumn),
-                        genre = "",
+                        genre = genreColumn.takeIf { it >= 0 }
+                            ?.let { cursor.getString(it) }
+                            .orEmpty(),
                         durationMs = cursor.getLong(durationColumn),
                         artworkUrl = albumArtUri(cursor.getLong(albumIdColumn)),
                     ),
@@ -171,6 +185,28 @@ class LocalConnector @Inject constructor(
     override fun invalidate(sourceId: Long) {
         // Aucune connexion à maintenir : les fichiers sont sur l'appareil.
     }
+
+    /**
+     * Colonnes qui n'existent pas sur toutes les versions d'Android.
+     *
+     * `RELATIVE_PATH` apparaît avec Android 10, `GENRE` avec Android 11. Les
+     * demander à une version antérieure ferait échouer la requête entière : sur ces
+     * appareils, les morceaux se retrouvent simplement dans un dossier unique et
+     * sans genre, ce qui reste préférable à une bibliothèque vide.
+     *
+     * Ces constantes sont inlinées à la compilation, d'où les annotations : elles
+     * disent à l'analyse statique que la garde de version est bien là.
+     */
+    private fun optionalColumns(): List<String> = buildList {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add(relativePathColumnName())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) add(genreColumnName())
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun relativePathColumnName(): String = MediaStore.Audio.Media.RELATIVE_PATH
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun genreColumnName(): String = MediaStore.Audio.Media.GENRE
 
     private fun countTracks(): Int =
         context.contentResolver.query(
@@ -201,6 +237,12 @@ class LocalConnector @Inject constructor(
 
         /** Écarte les fragments sonores trop courts pour être de la musique. */
         const val MIN_DURATION_MS = 20_000
+
+        // Noms littéraux pour la lecture du curseur : `getColumnIndex` renvoie -1
+        // si la colonne est absente, ce qui est exactement le comportement voulu
+        // sur les versions d'Android qui ne la connaissent pas.
+        const val RELATIVE_PATH_COLUMN = "relative_path"
+        const val GENRE_COLUMN = "genre"
 
         val ALBUM_ART_BASE: android.net.Uri =
             "content://media/external/audio/albumart".toUri()
