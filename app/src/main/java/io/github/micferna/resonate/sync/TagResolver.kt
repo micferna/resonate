@@ -21,6 +21,9 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.IOException
+import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -98,9 +101,49 @@ class TagResolver @Inject constructor(
                 durationMs = if (durationUs > 0) durationUs / 1000 else track.durationMs,
                 tagsResolved = true,
                 searchKey = buildSearchKey(title, artist, album),
+                artworkUrl = extractArtwork(track, metadata) ?: track.artworkUrl,
             ),
         )
         return true
+    }
+
+    /**
+     * Extrait la pochette embarquée et la range sur l'appareil.
+     *
+     * Sans cela, une bibliothèque SFTP, SMB ou WebDAV n'affiche que des icônes
+     * grises : ces protocoles servent des fichiers, pas des métadonnées, et l'image
+     * ne se trouve qu'à l'intérieur du conteneur. Media3 la remonte au même moment
+     * que les tags, donc sans requête réseau supplémentaire — la refuser reviendrait
+     * à jeter une donnée déjà téléchargée.
+     *
+     * L'image est écrite une fois dans le stockage privé de l'app et référencée par
+     * son chemin. Les octets ne transitent pas par la base : y stocker des images
+     * ferait grossir chaque requête sur la bibliothèque.
+     *
+     * Les morceaux d'un même album partagent la même pochette : elle est nommée
+     * d'après l'album, pas d'après le morceau, ce qui évite d'écrire quinze fois la
+     * même image pour un disque de quinze titres.
+     */
+    private fun extractArtwork(track: TrackEntity, metadata: MediaMetadata): String? {
+        val data = metadata.artworkData ?: return null
+        if (data.isEmpty()) return null
+
+        return try {
+            val directory = File(context.filesDir, ARTWORK_DIR).apply { mkdirs() }
+            val target = File(directory, artworkFileName(track))
+            if (!target.exists()) target.writeBytes(data)
+            target.toURI().toString()
+        } catch (error: IOException) {
+            Log.d(TAG, "Pochette non enregistrée pour ${track.remotePath}", error)
+            null
+        }
+    }
+
+    /** Nom déterministe, dérivé de l'album pour être partagé par ses morceaux. */
+    private fun artworkFileName(track: TrackEntity): String {
+        val key = "${track.sourceId}/${track.albumArtist}/${track.album}"
+        val digest = MessageDigest.getInstance("SHA-256").digest(key.toByteArray())
+        return digest.take(16).joinToString("") { "%02x".format(it) } + ".img"
     }
 
     private suspend fun read(track: TrackEntity): Pair<MediaMetadata, Long> {
@@ -138,11 +181,15 @@ class TagResolver @Inject constructor(
             durationMs = durationMs,
             tagsResolved = true,
             searchKey = buildSearchKey(title, artist, album),
+            // Aucun tag lisible, donc aucune pochette à en tirer : on conserve ce
+            // qui était déjà là plutôt que de l'effacer.
+            artworkUrl = artworkUrl,
         )
     }
 
     private companion object {
         const val TAG = "TagResolver"
         const val DEFAULT_BATCH = 60
+        const val ARTWORK_DIR = "artwork"
     }
 }

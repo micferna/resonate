@@ -25,6 +25,23 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE id = :id")
     fun observeById(id: String): Flow<TrackEntity?>
 
+    @Query("SELECT * FROM tracks WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<String>): List<TrackEntity>
+
+    /**
+     * Morceaux d'une file, remis dans l'ordre demandé.
+     *
+     * SQLite rend les lignes dans l'ordre qui l'arrange, pas dans celui de la clause
+     * `IN`. Or une file de lecture *est* un ordre : le reconstituer ici évite que la
+     * restauration ne mélange les morceaux. Les identifiants sans correspondance —
+     * fichiers supprimés depuis — disparaissent simplement de la file.
+     */
+    suspend fun byIdsInOrder(ids: List<String>): List<TrackEntity> {
+        if (ids.isEmpty()) return emptyList()
+        val byId = byIds(ids).associateBy { it.id }
+        return ids.mapNotNull(byId::get)
+    }
+
     @Query(
         """
         SELECT * FROM tracks

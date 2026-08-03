@@ -30,13 +30,16 @@ import io.github.micferna.resonate.MainActivity
 import io.github.micferna.resonate.R
 import io.github.micferna.resonate.data.db.dao.TrackDao
 import io.github.micferna.resonate.data.db.entity.Rating
+import io.github.micferna.resonate.data.db.entity.TrackEntity
 import io.github.micferna.resonate.data.prefs.SettingsStore
 import io.github.micferna.resonate.di.ApplicationScope
 import io.github.micferna.resonate.di.PlaybackDataSource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -59,11 +62,17 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var libraryTree: MediaLibraryTree
 
+    @Inject lateinit var playbackStateStore: PlaybackStateStore
+
     @Inject @ApplicationScope lateinit var scope: CoroutineScope
 
     private var mediaSession: MediaLibrarySession? = null
     private var settingsJob: Job? = null
+    private var recovery: PlaybackRecovery? = null
     private var skipDisliked: Boolean = true
+
+    /** Dernier échec de lecture, exposé aux contrôleurs via les extras de session. */
+    private var lastFailure: PlaybackFailure? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -88,6 +97,11 @@ class PlaybackService : MediaLibraryService() {
             .build()
 
         player.addListener(PlaybackStatsRecorder(player))
+        player.addListener(QueuePersister(player))
+        recovery = PlaybackRecovery(player, scope) { failure ->
+            lastFailure = failure
+            publishFailure(failure)
+        }.also(player::addListener)
 
         mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
             .setSessionActivity(openAppIntent())
@@ -99,6 +113,90 @@ class PlaybackService : MediaLibraryService() {
         // chaque redémarrage de la lecture.
         settingsJob = scope.launch {
             settingsStore.settings.collect { skipDisliked = it.skipDislikedTracks }
+        }
+
+        restoreLastQueue(player)
+    }
+
+    /**
+     * Rétablit la file du dernier arrêt, **en pause**.
+     *
+     * Rien ne démarre tout seul : rouvrir l'app ne doit pas déclencher du son dans
+     * un lieu public. L'utilisateur retrouve simplement sa file et sa position, et
+     * décide s'il reprend.
+     */
+    private fun restoreLastQueue(player: ExoPlayer) {
+        scope.launch {
+            val saved = playbackStateStore.load()
+            if (saved.isEmpty) return@launch
+            val tracks = trackDao.byIdsInOrder(saved.trackIds)
+            if (tracks.isEmpty()) return@launch
+
+            withContext(Dispatchers.Main) {
+                if (player.mediaItemCount > 0) return@withContext
+                player.setMediaItems(
+                    tracks.map(TrackEntity::toMediaItem),
+                    saved.index.coerceIn(0, tracks.lastIndex),
+                    saved.positionMs,
+                )
+                player.shuffleModeEnabled = saved.shuffleEnabled
+                player.repeatMode = saved.repeatMode
+                player.prepare()
+            }
+        }
+    }
+
+    /**
+     * Transmet l'échec aux contrôleurs connectés.
+     *
+     * Passer par les extras de session plutôt que par un canal propre à l'app fait
+     * que l'information atteint aussi les surfaces externes — l'écran de la voiture,
+     * la montre — qui n'ont pas accès à nos objets internes.
+     */
+    private fun publishFailure(failure: PlaybackFailure?) {
+        val session = mediaSession ?: return
+        session.setSessionExtras(
+            Bundle().apply {
+                putString(EXTRA_FAILURE_MESSAGE, failure?.message)
+                putBoolean(EXTRA_FAILURE_RETRYING, failure?.retrying == true)
+            },
+        )
+    }
+
+    /**
+     * Note la file et la position à chaque changement notable.
+     *
+     * On écrit sur les événements plutôt qu'à intervalle régulier : un minuteur
+     * réveillerait le processeur en permanence, alors que les moments qui comptent
+     * — changement de morceau, pause, saut — sont rares et parfaitement identifiés.
+     */
+    private inner class QueuePersister(private val player: Player) : Player.Listener {
+
+        override fun onEvents(player: Player, events: Player.Events) {
+            if (!events.containsAny(
+                    Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_IS_PLAYING_CHANGED,
+                    Player.EVENT_POSITION_DISCONTINUITY,
+                    Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                    Player.EVENT_REPEAT_MODE_CHANGED,
+                )
+            ) {
+                return
+            }
+            persist()
+        }
+
+        private fun persist() {
+            val ids = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
+            val snapshot = SavedQueue(
+                trackIds = ids,
+                index = player.currentMediaItemIndex,
+                positionMs = player.currentPosition.coerceAtLeast(0),
+                shuffleEnabled = player.shuffleModeEnabled,
+                repeatMode = player.repeatMode,
+            )
+            scope.launch { playbackStateStore.save(snapshot) }
         }
     }
 
@@ -149,6 +247,8 @@ class PlaybackService : MediaLibraryService() {
     override fun onDestroy() {
         settingsJob?.cancel()
         settingsJob = null
+        recovery?.cancel()
+        recovery = null
         mediaSession?.run {
             player.release()
             release()
@@ -288,12 +388,25 @@ class PlaybackService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo,
             isForPlayback: Boolean,
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future {
-            val tracks = libraryTree.resumptionQueue()
-            MediaSession.MediaItemsWithStartPosition(
-                tracks.map(io.github.micferna.resonate.data.db.entity.TrackEntity::toMediaItem),
-                /* startIndex = */ 0,
-                /* startPositionMs = */ 0,
-            )
+            // La file réellement écoutée en dernier prime sur une reconstitution
+            // approximative : au démarrage du véhicule, on reprend exactement là où
+            // la lecture s'était arrêtée.
+            val saved = playbackStateStore.load()
+            val restored = if (saved.isEmpty) emptyList() else trackDao.byIdsInOrder(saved.trackIds)
+
+            if (restored.isNotEmpty()) {
+                MediaSession.MediaItemsWithStartPosition(
+                    restored.map(TrackEntity::toMediaItem),
+                    saved.index.coerceIn(0, restored.lastIndex),
+                    saved.positionMs,
+                )
+            } else {
+                MediaSession.MediaItemsWithStartPosition(
+                    libraryTree.resumptionQueue().map(TrackEntity::toMediaItem),
+                    /* startIndex = */ 0,
+                    /* startPositionMs = */ 0,
+                )
+            }
         }
 
         override fun onSearch(
@@ -374,6 +487,8 @@ class PlaybackService : MediaLibraryService() {
     }
 
     companion object {
+        const val EXTRA_FAILURE_MESSAGE = "io.github.micferna.resonate.FAILURE_MESSAGE"
+        const val EXTRA_FAILURE_RETRYING = "io.github.micferna.resonate.FAILURE_RETRYING"
         const val COMMAND_TOGGLE_LIKE = "io.github.micferna.resonate.TOGGLE_LIKE"
         const val COMMAND_TOGGLE_DISLIKE = "io.github.micferna.resonate.TOGGLE_DISLIKE"
         private const val PLAY_THRESHOLD_MS = 30_000L

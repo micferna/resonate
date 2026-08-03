@@ -76,6 +76,7 @@ data class TrackTagPatch(
     val durationMs: Long,
     val tagsResolved: Boolean,
     val searchKey: String,
+    val artworkUrl: String?,
 )
 
 /** Patch de l'état hors-ligne, piloté par le gestionnaire de téléchargements. */

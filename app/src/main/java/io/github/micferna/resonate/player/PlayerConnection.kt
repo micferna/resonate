@@ -42,6 +42,10 @@ data class PlayerUiState(
     val hasNext: Boolean = false,
     val hasPrevious: Boolean = false,
     val queueSize: Int = 0,
+    /** Message d'échec de lecture, `null` si tout va bien. */
+    val failureMessage: String? = null,
+    /** `true` tant qu'une reprise automatique est en cours. */
+    val retrying: Boolean = false,
 )
 
 /**
@@ -69,9 +73,17 @@ class PlayerConnection @Inject constructor(
 
     private suspend fun connect() = withContext(Dispatchers.Main) {
         val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-        val connected = MediaController.Builder(context, token).buildAsync().await()
+        // Le même objet est passé deux fois, et ce n'est pas redondant :
+        // `setListener` enregistre la part MediaController.Listener — d'où viennent
+        // les changements d'extras, donc les erreurs de lecture — tandis que
+        // `addListener` enregistre la part Player.Listener, pour l'état de lecture.
+        val listener = StateListener()
+        val connected = MediaController.Builder(context, token)
+            .setListener(listener)
+            .buildAsync()
+            .await()
         controller = connected
-        connected.addListener(StateListener())
+        connected.addListener(listener)
         publish()
         launch { trackPositionWhileObserved() }
     }
@@ -210,6 +222,11 @@ class PlayerConnection @Inject constructor(
             return
         }
         val metadata = player.mediaMetadata
+        // Le service publie les échecs dans les extras de session : c'est le seul
+        // canal que partagent l'app et les surfaces externes.
+        val extras = player.sessionExtras
+        val failureMessage = extras.getString(PlaybackService.EXTRA_FAILURE_MESSAGE)
+        val retrying = extras.getBoolean(PlaybackService.EXTRA_FAILURE_RETRYING, false)
         _state.value = PlayerUiState(
             isConnected = true,
             isPlaying = player.isPlaying,
@@ -225,11 +242,16 @@ class PlayerConnection @Inject constructor(
             hasNext = player.hasNextMediaItem(),
             hasPrevious = player.hasPreviousMediaItem(),
             queueSize = player.mediaItemCount,
+            failureMessage = failureMessage,
+            retrying = retrying,
         )
     }
 
-    private inner class StateListener : Player.Listener {
+    private inner class StateListener : Player.Listener, MediaController.Listener {
         override fun onEvents(player: Player, events: Player.Events) = publish()
+
+        /** Un échec de lecture arrive par les extras, pas par un événement Player. */
+        override fun onExtrasChanged(controller: MediaController, extras: Bundle) = publish()
     }
 
     private companion object {
