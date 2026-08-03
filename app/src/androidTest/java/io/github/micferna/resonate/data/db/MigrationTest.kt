@@ -1,5 +1,6 @@
 package io.github.micferna.resonate.data.db
 
+import androidx.room.Room
 import androidx.room.testing.MigrationTestHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -131,6 +132,30 @@ class MigrationTest {
         // `validateDroppedTables = true` a déjà comparé le schéma obtenu à celui
         // exporté pour la version 3 : arriver ici sans exception suffit.
         assertTrue(db.isOpen)
+    }
+
+    /**
+     * Réinstaller une version antérieure ne doit pas condamner l'application.
+     *
+     * Les APK restent téléchargeables sur la page des Releases, et y revenir est le
+     * premier réflexe quand une nouvelle version pose problème. Sans repli, Room
+     * lève « A migration from 3 to 1 was required but not found » à chaque
+     * lancement — constaté sur appareil avant ce correctif.
+     */
+    @Test
+    fun un_retour_a_une_version_anterieure_recree_la_base() {
+        helper.createDatabase(TEST_DB, 3).close()
+
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val downgraded = Room.databaseBuilder(context, ResonateDatabase::class.java, TEST_DB)
+            .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
+            .build()
+
+        // Ouvrir sans exception suffit : c'est précisément ce qui échouait.
+        downgraded.openHelper.writableDatabase.use { db ->
+            assertTrue(db.isOpen)
+        }
+        downgraded.close()
     }
 
     private companion object {
