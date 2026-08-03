@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Rien n'est sauvegardé automatiquement.
+
+  La base contient les identifiants des serveurs, chiffrés par une clé qui ne quitte
+  jamais le KeyStore de l'appareil : restaurée ailleurs, elle serait de toute façon
+  indéchiffrable. Sauvegarder les caches audio (plusieurs gigaoctets) n'aurait pas
+  davantage de sens. L'export/import explicite depuis les réglages reste la voie
+  prévue pour migrer une configuration.
+-->
+<full-backup-content>
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="file" path="." />
+</full-backup-content>

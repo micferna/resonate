@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Une nouvelle poussée sur une branche annule la vérification en cours :
+# inutile de payer un build complet pour un commit déjà remplacé.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Compilation, analyse statique et tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer le JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Préparer Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          # Le cache n'est alimenté que depuis la branche par défaut : une pull
+          # request ne doit pas pouvoir empoisonner le cache des autres builds.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Vérifier l'intégrité du wrapper Gradle
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Tests unitaires
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Analyse Lint (les avertissements sont des erreurs)
+        run: ./gradlew lintDebug --no-daemon
+
+      - name: Compilation de l'APK de débogage
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Publier les rapports en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          retention-days: 7

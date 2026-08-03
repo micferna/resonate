@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Deux exceptions, chacune justifiée. Tout le reste des règles Lint est actif et
+  remonté en erreur (voir `lint { warningsAsErrors = true }` dans build.gradle.kts) :
+  ce fichier n'est pas un tapis sous lequel glisser des avertissements.
+-->
+<lint>
+
+    <!--
+      Signalé à l'intérieur de `bcpkix-jdk18on`, une dépendance transitive de sshj
+      (déclarée dans son POM et réellement utilisée pour lire les clés privées).
+      La classe incriminée est un utilitaire de test de la bibliothèque, jamais
+      atteint depuis l'application : Resonate ne construit aucun TrustManager et
+      s'en remet au magasin de certificats du système pour TLS.
+
+      L'exclusion est limitée au chemin de cet artefact ; le même problème dans le
+      code de l'app resterait une erreur.
+    -->
+    <issue id="TrustAllX509TrustManager">
+        <ignore regexp="bcpkix-jdk18on" />
+    </issue>
+
+    <!--
+      Lint propose Kotlin 2.4.10, mais KSP — dont dépendent Room et Hilt pour la
+      génération de code — n'existe pas encore pour cette version. Le catalogue est
+      donc volontairement figé sur 2.3.10, et les montées de version sont pilotées
+      par Dependabot, qui sait apparier les deux.
+    -->
+    <issue id="NewerVersionAvailable" severity="informational" />
+
+    <!--
+      Lint fait remarquer que le qualificateur `-v26` est superflu puisque minSdk vaut
+      déjà 26. C'est exact sur le papier, mais AAPT2 refuse de résoudre l'icône si le
+      dossier s'appelle simplement `mipmap-anydpi` (« resource mipmap/ic_launcher not
+      found ») : vérifié, le build échoue. Le qualificateur reste donc en place.
+    -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+
+</lint>

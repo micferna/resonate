@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Thème minimal : toute l'apparence est décidée par Compose (Material 3, couleurs
+      dynamiques). Ce thème ne sert qu'à la fenêtre système et à l'écran de démarrage,
+      avant que le premier composable ne soit dessiné.
+    -->
+    <style name="Theme.Resonate" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Resonate.Main</item>
+    </style>
+
+    <style name="Theme.Resonate.Main" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+</resources>

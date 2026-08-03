@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Notification de lecture, progression des téléchargements, alerte de mise à jour. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- La lecture continue écran éteint : service de premier plan de type média. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- Maintient le réseau actif pendant le remplissage de la mémoire tampon. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Les téléchargements interrompus par un redémarrage sont repris. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Mise à jour de l'app depuis les Releases GitHub. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application
+        android:name=".ResonateApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Resonate"
+        tools:targetApi="37">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Resonate"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          Le service de lecture est exporté afin que les surfaces système — écran de
+          verrouillage, casque Bluetooth, Android Auto, montre — puissent s'y connecter.
+          C'est le fonctionnement normal d'une MediaSession : il n'expose aucune donnée,
+          seulement les contrôles de lecture.
+        -->
+        <service
+            android:name=".player.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".player.OfflineDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync">
+            <intent-filter>
+                <action android:name="androidx.media3.exoplayer.downloadService.action.RESTART" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
+        <!--
+          L'indexation est demandée en accéléré : jusqu'à Android 11, WorkManager la
+          fait tourner dans son propre service de premier plan. Depuis Android 10,
+          un tel service doit déclarer son type, et c'est à l'application hôte de
+          compléter l'entrée de WorkManager — sans quoi le démarrage lève une
+          exception au premier lancement d'analyse.
+        -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
+        <!--
+          Reçoit le verdict du gestionnaire de paquets après une mise à jour.
+          Non exporté : seule l'intention différée créée par l'app peut le déclencher.
+        -->
+        <receiver
+            android:name=".update.UpdateInstallReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="io.github.micferna.resonate.UPDATE_INSTALL_STATUS" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          WorkManager est configuré à la main dans ResonateApp (Configuration.Provider)
+          pour que Hilt puisse injecter les dépendances des workers ; son initialisation
+          automatique doit donc être désactivée.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+    </application>
+</manifest>

@@ -1,0 +1,25 @@
+# Build
+build/
+.gradle/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+local.properties
+
+# Signature — ne doit JAMAIS être versionnée.
+# Perdre ce fichier signifie ne plus pouvoir publier de mise à jour de l'app :
+# Android refuse de remplacer une application par un APK signé autrement.
+*.jks
+*.keystore
+keystore.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Rapports produits localement
+app/lint-baseline.xml
+captures/

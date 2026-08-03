@@ -1,0 +1,51 @@
+name: CodeQL
+
+# Analyse de sécurité du code Kotlin/Java : injections, secrets en dur, mauvais
+# usages de la cryptographie, chemins de données non validés. Complémentaire de
+# Dependabot, qui surveille les vulnérabilités des dépendances, pas notre code.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Une passe hebdomadaire : de nouvelles règles apparaissent régulièrement et
+    # peuvent révéler un problème dans du code qui n'a pas bougé.
+    - cron: '30 4 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyser le code Kotlin
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer le JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Initialiser CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin
+          build-mode: manual
+          queries: security-and-quality
+
+      - name: Préparer Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Compiler
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Analyser
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:java-kotlin

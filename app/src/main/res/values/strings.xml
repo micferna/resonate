@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Resonate</string>
+
+    <!-- Lecture -->
+    <string name="action_like">J\'aime</string>
+    <string name="action_dislike">Je n\'aime pas</string>
+
+    <!-- Canaux de notification -->
+    <string name="download_channel_name">Téléchargements hors-ligne</string>
+    <string name="download_channel_description">Progression des morceaux rendus disponibles sans réseau</string>
+    <string name="update_channel_name">Mises à jour</string>
+    <string name="update_channel_description">Avertit quand une nouvelle version de Resonate est publiée</string>
+    <string name="scan_channel_name">Indexation</string>
+    <string name="scan_channel_description">Progression de l\'analyse des bibliothèques distantes</string>
+    <string name="scan_notification_title">Analyse des bibliothèques</string>
+</resources>

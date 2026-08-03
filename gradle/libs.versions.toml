@@ -1,0 +1,148 @@
+## Catalogue de versions — toutes les versions sont les dernières STABLES vérifiées
+## sur Google Maven / Maven Central. Les mises à jour sont proposées automatiquement
+## par Dependabot (.github/dependabot.yml), qui sait éditer ce fichier.
+##
+## Contrainte d'alignement importante : KSP suit Kotlin version par version.
+## Kotlin 2.3.10 <-> KSP 2.3.10. Ne pas bumper l'un sans l'autre.
+
+[versions]
+agp = "9.3.1"
+kotlin = "2.3.10"
+ksp = "2.3.10"
+hilt = "2.60.1"
+
+# AndroidX
+coreKtx = "1.19.0"
+splashscreen = "1.2.0"
+activityCompose = "1.13.0"
+lifecycle = "2.11.0"
+navigationCompose = "2.9.8"
+composeBom = "2026.06.01"
+room = "2.8.4"
+datastore = "1.2.1"
+work = "2.11.2"
+hiltExt = "1.4.0"
+media3 = "1.10.1"
+
+# Kotlin ecosystem
+coroutines = "1.11.0"
+serialization = "1.11.0"
+
+# Réseau / images
+okhttp = "5.4.0"
+coil = "3.5.0"
+
+# Protocoles distants
+sshj = "0.40.0"
+smbj = "0.14.0"
+bouncycastle = "1.85"
+eddsa = "0.3.0"
+slf4j = "2.0.18"
+
+# Tests
+junit = "4.13.2"
+androidxJunit = "1.3.0"
+testRunner = "1.7.0"
+mockk = "1.14.11"
+turbine = "1.2.1"
+
+[libraries]
+# --- AndroidX socle ---
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "splashscreen" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "lifecycle" }
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+
+# --- Compose (versions pilotées par le BOM) ---
+androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+androidx-compose-ui = { module = "androidx.compose.ui:ui" }
+androidx-compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
+androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+androidx-compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
+androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
+
+# --- Persistance ---
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+
+# --- Tâches de fond ---
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltExt" }
+androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hiltExt" }
+androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltExt" }
+
+# --- Injection de dépendances ---
+hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
+hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
+
+# --- Lecture audio ---
+media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
+media3-common = { module = "androidx.media3:media3-common", version.ref = "media3" }
+media3-datasource = { module = "androidx.media3:media3-datasource", version.ref = "media3" }
+media3-datasource-okhttp = { module = "androidx.media3:media3-datasource-okhttp", version.ref = "media3" }
+media3-database = { module = "androidx.media3:media3-database", version.ref = "media3" }
+media3-exoplayer-workmanager = { module = "androidx.media3:media3-exoplayer-workmanager", version.ref = "media3" }
+media3-inspector = { module = "androidx.media3:media3-inspector", version.ref = "media3" }
+
+# --- Kotlin ---
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+
+# --- Réseau / images ---
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+okhttp-logging = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
+
+# --- Protocoles distants ---
+sshj = { module = "com.hierynomus:sshj", version.ref = "sshj" }
+smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
+bouncycastle-prov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
+eddsa = { module = "net.i2p.crypto:eddsa", version.ref = "eddsa" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+
+# --- Tests ---
+junit = { module = "junit:junit", version.ref = "junit" }
+androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "androidxJunit" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "testRunner" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+room = { id = "androidx.room", version.ref = "room" }
+
+[bundles]
+compose = [
+    "androidx-compose-ui",
+    "androidx-compose-ui-graphics",
+    "androidx-compose-ui-tooling-preview",
+    "androidx-compose-material3",
+    "androidx-compose-material-icons-extended",
+]
+media3 = [
+    "media3-exoplayer",
+    "media3-session",
+    "media3-common",
+    "media3-datasource",
+    "media3-datasource-okhttp",
+    "media3-database",
+]
