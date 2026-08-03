@@ -99,7 +99,7 @@ jobs:
           "$apksigner" verify --verbose --print-certs "dist/$APK_NAME"
 
       - name: Publier la Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*.apk
