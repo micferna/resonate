@@ -22,4 +22,6 @@ keystore.properties
 
 # Rapports produits localement
 app/lint-baseline.xml
-captures/
+# Ancré à la racine : sans la barre oblique initiale, la règle avalait aussi
+# docs/captures/, où vivent les captures d'écran du README.
+/captures/
