@@ -2,12 +2,14 @@
 ## sur Google Maven / Maven Central. Les mises à jour sont proposées automatiquement
 ## par Dependabot (.github/dependabot.yml), qui sait éditer ce fichier.
 ##
-## Contrainte d'alignement importante : KSP suit Kotlin version par version.
-## Kotlin 2.3.10 <-> KSP 2.3.10. Ne pas bumper l'un sans l'autre.
+## KSP est publié après Kotlin et peut donc rester en retard d'une version : au
+## 2026-08-03, KSP 2.3.10 fonctionne avec Kotlin 2.4.10 (vérifié : compilation,
+## tests et Lint passent). Ce n'est pas garanti pour toutes les combinaisons —
+## c'est la CI qui tranche, pas une règle a priori.
 
 [versions]
 agp = "9.3.1"
-kotlin = "2.3.10"
+kotlin = "2.4.10"
 ksp = "2.3.10"
 hilt = "2.60.1"
 

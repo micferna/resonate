@@ -21,10 +21,10 @@
     </issue>
 
     <!--
-      Lint propose Kotlin 2.4.10, mais KSP — dont dépendent Room et Hilt pour la
-      génération de code — n'existe pas encore pour cette version. Le catalogue est
-      donc volontairement figé sur 2.3.10, et les montées de version sont pilotées
-      par Dependabot, qui sait apparier les deux.
+      Cette règle interroge le réseau à chaque analyse : son résultat dépend de
+      l'instant, ce qui rend la CI non déterministe et la ferait échouer sur une
+      simple publication amont. Les montées de version sont pilotées par
+      Dependabot, qui ouvre une pull request que la CI valide avant fusion.
     -->
     <issue id="NewerVersionAvailable" severity="informational" />
 

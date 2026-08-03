@@ -24,19 +24,13 @@ updates:
           - 'org.jetbrains.kotlin*'
           - 'com.google.devtools.ksp*'
     ignore:
-      # Kotlin ne peut monter qu'accompagné du KSP correspondant, et KSP sort
-      # toujours après. Une montée 2.3 -> 2.4 proposée seule casse la génération
-      # de code de Room et Hilt : les bumps mineurs sont donc bloqués au même
-      # titre que les majeurs, et la montée se fait à la main une fois les deux
-      # versions publiées. (Vécu : la PR #6 proposait exactement cela.)
+      # KSP sort après Kotlin et peut donc rester en retard d'une version. Ce
+      # décalage est le plus souvent sans conséquence — vérifié pour Kotlin
+      # 2.4.10 avec KSP 2.3.10. On ne bloque donc pas les montées mineures : la
+      # CI compile, teste et analyse chaque pull request, et c'est elle qui doit
+      # trancher. Seul le majeur, qui demande une relecture, reste manuel.
       - dependency-name: 'org.jetbrains.kotlin*'
-        update-types:
-          - version-update:semver-major
-          - version-update:semver-minor
-      - dependency-name: 'org.jetbrains.kotlin.plugin*'
-        update-types:
-          - version-update:semver-major
-          - version-update:semver-minor
+        update-types: [version-update:semver-major]
 
   # Les actions GitHub sont du code exécuté avec accès au dépôt : elles méritent
   # la même surveillance que les dépendances applicatives.
