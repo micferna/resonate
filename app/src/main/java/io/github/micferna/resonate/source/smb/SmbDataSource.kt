@@ -122,12 +122,4 @@ class SmbDataSource(
         lease?.close()
         lease = null
     }
-
-    class Factory(
-        private val pool: SmbConnectionPool,
-        private val resolve: (Long) -> ResolvedSource,
-    ) : androidx.media3.datasource.DataSource.Factory {
-        override fun createDataSource(): androidx.media3.datasource.DataSource =
-            SmbDataSource(pool, resolve)
-    }
 }

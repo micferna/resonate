@@ -47,10 +47,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    library: LibraryRepository,
-    player: PlayerConnection,
-    playlists: PlaylistRepository,
-) : TrackActionsViewModel(library, player, playlists) {
+    libraryRepository: LibraryRepository,
+    playerConnection: PlayerConnection,
+    playlistRepo: PlaylistRepository,
+) : TrackActionsViewModel(libraryRepository, playerConnection, playlistRepo) {
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()

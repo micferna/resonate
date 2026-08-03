@@ -164,10 +164,19 @@ class UpdateInstaller @Inject constructor(
         apk.delete()
     }
 
+    /**
+     * Intention **explicite** : le composant destinataire est nommé, plutôt que
+     * laissé à la résolution par action. Aucune autre application ne peut ainsi
+     * intercepter le verdict d'installation, même si elle déclarait la même action.
+     *
+     * `FLAG_MUTABLE` est imposé par `PackageInstaller`, qui doit y ajouter le
+     * statut et l'éventuelle intention de confirmation.
+     */
     private fun statusIntent(sessionId: Int): PendingIntent = PendingIntent.getBroadcast(
         context,
         sessionId,
-        Intent(UpdateInstallReceiver.ACTION).setPackage(context.packageName),
+        Intent(context, UpdateInstallReceiver::class.java)
+            .setAction(UpdateInstallReceiver.ACTION),
         PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 

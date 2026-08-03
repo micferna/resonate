@@ -113,13 +113,4 @@ class SftpDataSource(
         lease?.close()
         lease = null
     }
-
-    /** Fabrique injectable côté Media3. */
-    class Factory(
-        private val pool: SftpConnectionPool,
-        private val resolve: (Long) -> ResolvedSource,
-    ) : androidx.media3.datasource.DataSource.Factory {
-        override fun createDataSource(): androidx.media3.datasource.DataSource =
-            SftpDataSource(pool, resolve)
-    }
 }

@@ -20,10 +20,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PlaylistsViewModel @Inject constructor(
-    library: LibraryRepository,
-    player: PlayerConnection,
-    playlists: PlaylistRepository,
-) : TrackActionsViewModel(library, player, playlists) {
+    libraryRepository: LibraryRepository,
+    playerConnection: PlayerConnection,
+    playlistRepo: PlaylistRepository,
+) : TrackActionsViewModel(libraryRepository, playerConnection, playlistRepo) {
 
     val playlists: StateFlow<List<PlaylistSummary>> = playlistRepository.observePlaylists()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())

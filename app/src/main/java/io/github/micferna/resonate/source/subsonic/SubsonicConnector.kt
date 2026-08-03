@@ -174,9 +174,16 @@ class SubsonicConnector @Inject constructor(
         return builder.build()
     }
 
+    /**
+     * Une seule instance, partagée : construire un `SecureRandom` par requête
+     * repaie à chaque fois le coût d'ensemencement, sans rien apporter — l'instance
+     * se réensemence elle-même au fil des tirages.
+     */
+    private val secureRandom = SecureRandom()
+
     private fun newSalt(): String {
         val bytes = ByteArray(SALT_BYTES)
-        SecureRandom().nextBytes(bytes)
+        secureRandom.nextBytes(bytes)
         return bytes.joinToString("") { "%02x".format(it) }
     }
 

@@ -77,14 +77,4 @@ class HttpRemoteDataSource(
             if (wasOpen) transferEnded()
         }
     }
-
-    class Factory(
-        private val callFactory: Call.Factory,
-        private val resolve: (Long) -> ResolvedSource,
-        private val toHttpUrl: (ResolvedSource, String) -> String,
-        private val headersFor: (ResolvedSource) -> Map<String, String>,
-    ) : DataSource.Factory {
-        override fun createDataSource(): DataSource =
-            HttpRemoteDataSource(callFactory, resolve, toHttpUrl, headersFor)
-    }
 }

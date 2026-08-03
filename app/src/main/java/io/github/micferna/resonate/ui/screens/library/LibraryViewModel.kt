@@ -50,11 +50,11 @@ data class LibraryUiState(
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
-    library: LibraryRepository,
-    player: PlayerConnection,
-    playlists: PlaylistRepository,
+    libraryRepository: LibraryRepository,
+    playerConnection: PlayerConnection,
+    playlistRepo: PlaylistRepository,
     private val sources: SourceRepository,
-) : TrackActionsViewModel(library, player, playlists) {
+) : TrackActionsViewModel(libraryRepository, playerConnection, playlistRepo) {
 
     private val _tab = MutableStateFlow(LibraryTab.TRACKS)
     val tab: StateFlow<LibraryTab> = _tab.asStateFlow()
