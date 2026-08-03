@@ -20,6 +20,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -69,8 +70,15 @@ fun SettingsScreen(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(viewModel::importConfiguration) }
 
+    // Durée longue, et non la valeur par défaut : ces messages répondent tous à un
+    // geste délibéré — vérifier les mises à jour, exporter, importer — et plusieurs
+    // portent des décomptes qu'il faut avoir le temps de lire. Une confirmation qui
+    // s'efface en une seconde équivaut à ne rien afficher : l'utilisateur appuie,
+    // ne voit rien, et appuie de nouveau.
     LaunchedEffect(Unit) {
-        viewModel.messages.collect { snackbarHost.showSnackbar(it) }
+        viewModel.messages.collect {
+            snackbarHost.showSnackbar(it, duration = SnackbarDuration.Long)
+        }
     }
 
     Scaffold(
