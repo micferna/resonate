@@ -19,6 +19,25 @@ data class AlbumSummary(
     @ColumnInfo(name = "artworkUrl") val artworkUrl: String?,
 )
 
+/** Ligne d'un regroupement par genre. */
+data class GenreSummary(
+    val genre: String,
+    @ColumnInfo(name = "trackCount") val trackCount: Int,
+)
+
+/**
+ * Un dossier de la bibliothèque, tel qu'il existe sur la source.
+ *
+ * Une arborescence de fichiers porte souvent une organisation que les tags ne
+ * reflètent pas : bootlegs, compilations personnelles, classements par soirée.
+ * Pouvoir la parcourir telle quelle évite de dépendre de tags parfois absents.
+ */
+data class FolderSummary(
+    val sourceId: Long,
+    val folder: String,
+    @ColumnInfo(name = "trackCount") val trackCount: Int,
+)
+
 /** Compteurs affichés sur l'écran Réglages. */
 data class LibraryStats(
     @ColumnInfo(name = "trackCount") val trackCount: Int,

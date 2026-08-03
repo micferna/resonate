@@ -137,6 +137,53 @@ interface TrackDao {
 
     @Query(
         """
+        SELECT genre AS genre, COUNT(*) AS trackCount
+        FROM tracks
+        WHERE genre != ''
+        GROUP BY genre
+        ORDER BY genre COLLATE NOCASE
+        """,
+    )
+    fun observeGenres(): Flow<List<GenreSummary>>
+
+    @Query("SELECT * FROM tracks WHERE genre = :genre ORDER BY artist COLLATE NOCASE, album COLLATE NOCASE")
+    fun observeByGenre(genre: String): Flow<List<TrackEntity>>
+
+    /**
+     * Dossiers contenant de la musique, dérivés des chemins distants.
+     *
+     * Le découpage se fait en SQL : remonter dix mille chemins pour n'en garder que
+     * les répertoires distincts serait du gaspillage.
+     *
+     * `rtrim(chemin, replace(chemin, '/', ''))` retire par la droite tous les
+     * caractères qui ne sont pas un séparateur, et s'arrête donc au dernier « / » —
+     * ce qui laisse exactement le dossier. SQLite n'ayant pas de fonction inverse
+     * ni d'expression régulière, c'est la formulation portable.
+     */
+    @Query(
+        """
+        SELECT
+            sourceId AS sourceId,
+            rtrim(remotePath, replace(remotePath, '/', '')) AS folder,
+            COUNT(*) AS trackCount
+        FROM tracks
+        GROUP BY sourceId, folder
+        ORDER BY folder COLLATE NOCASE
+        """,
+    )
+    fun observeFolders(): Flow<List<FolderSummary>>
+
+    @Query(
+        """
+        SELECT * FROM tracks
+        WHERE sourceId = :sourceId AND remotePath LIKE :folder || '%'
+        ORDER BY remotePath COLLATE NOCASE
+        """,
+    )
+    fun observeByFolder(sourceId: Long, folder: String): Flow<List<TrackEntity>>
+
+    @Query(
+        """
         SELECT COUNT(*) AS trackCount,
                COUNT(DISTINCT artist) AS artistCount,
                COUNT(DISTINCT album) AS albumCount,
