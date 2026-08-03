@@ -117,15 +117,22 @@ façon de les rendre transférables, et l'app le dit sans détour.
    ```
 3. Ouvrez le fichier sur votre téléphone et autorisez l'installation depuis cette
    source lorsque Android le demande.
-4. Google Play Protect affichera « Play Protect n'a jamais vu d'appli de ce
-   développeur auparavant ». C'est attendu : l'application est signée par une clé
-   personnelle, inconnue de Google puisqu'elle n'est pas distribuée par le Play
-   Store. Choisissez **Installer quand même**. L'avertissement disparaît une fois
-   la réputation du certificat établie.
+4. Google Play Protect affichera « Appli bloquée pour protéger votre appareil ».
+   C'est attendu : l'application est signée par une clé personnelle, inconnue de
+   Google puisqu'elle n'est pas distribuée par le Play Store.
+
+   La fenêtre ne propose d'abord qu'un bouton **OK**, qui annule l'installation.
+   L'échappatoire est cachée derrière **Plus de détails** : le lien **Installer
+   quand même** apparaît alors au bas du texte explicatif.
 
 Les mises à jour suivantes se font depuis l'app, dans **Réglages → Mises à jour**.
 L'app vérifie l'empreinte SHA-256 publiée avant d'installer quoi que ce soit, puis
 laisse Android demander votre confirmation.
+
+**Play Protect bloque aussi les mises à jour**, avec la même fenêtre et le même
+détour par *Plus de détails*. Mesuré sur la mise à jour 0.2.2 → 0.2.3 : le
+blocage n'a pas disparu parce que le certificat avait déjà servi. Attendez-vous
+à refaire ce geste à chaque version tant que la clé reste inconnue de Google.
 
 **Android 8.0 (API 26) minimum.** iOS n'est pas concerné : Apple interdit
 l'installation d'applications hors de l'App Store, ce qui rend impossible le
