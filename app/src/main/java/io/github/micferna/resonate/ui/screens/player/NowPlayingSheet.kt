@@ -10,7 +10,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -42,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import io.github.micferna.resonate.player.PlayerUiState
+import io.github.micferna.resonate.player.SleepTimerState
 import io.github.micferna.resonate.ui.components.Artwork
 import io.github.micferna.resonate.ui.formatDuration
 
@@ -65,11 +70,14 @@ fun NowPlayingSheet(
     onToggleLike: () -> Unit,
     onToggleDislike: () -> Unit,
     onOpenQueue: () -> Unit,
+    sleepTimer: SleepTimerState,
+    onSleepTimer: (minutes: Int?) -> Unit,
     isLiked: Boolean,
     isDisliked: Boolean,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var scrubbing by remember { mutableStateOf(false) }
+    var timerOpen by remember { mutableStateOf(false) }
     var scrubPosition by remember { mutableFloatStateOf(0f) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -214,7 +222,90 @@ fun NowPlayingSheet(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                IconButton(onClick = { timerOpen = true }) {
+                    Icon(
+                        Icons.Filled.Bedtime,
+                        contentDescription = "Minuterie d'arrêt",
+                        tint = if (sleepTimer.isRunning) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
+
+            if (sleepTimer.isRunning) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (sleepTimer.untilEndOfTrack) {
+                        "Arrêt à la fin du morceau"
+                    } else {
+                        "Arrêt dans ${formatDuration(sleepTimer.remainingMs)}"
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
+
+    if (timerOpen) {
+        SleepTimerDialog(
+            active = sleepTimer.isRunning,
+            onPick = { minutes -> onSleepTimer(minutes); timerOpen = false },
+            onDismiss = { timerOpen = false },
+        )
+    }
+}
+
+/**
+ * Choix de la minuterie.
+ *
+ * « À la fin du morceau » figure en premier parce que c'est le besoin le plus
+ * fréquent en déplacement : arriver sans se faire couper au milieu d'une chanson.
+ * Les durées fixes servent surtout à s'endormir.
+ */
+@Composable
+private fun SleepTimerDialog(
+    active: Boolean,
+    onPick: (Int?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Minuterie d'arrêt") },
+        text = {
+            Column {
+                Text(
+                    text = "À la fin du morceau",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onPick(0) }
+                        .padding(vertical = 14.dp),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                listOf(15, 30, 45, 60, 90).forEach { minutes ->
+                    Text(
+                        text = "$minutes minutes",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPick(minutes) }
+                            .padding(vertical = 14.dp),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (active) {
+                androidx.compose.material3.TextButton(onClick = { onPick(null) }) {
+                    Text("Annuler la minuterie")
+                }
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Fermer") }
+        },
+    )
 }

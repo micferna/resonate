@@ -60,6 +60,7 @@ fun ResonateApp(shellViewModel: AppShellViewModel = hiltViewModel()) {
     val navController = rememberNavController()
     val playerState by shellViewModel.playerState.collectAsStateWithLifecycle()
     val currentTrack by shellViewModel.currentTrack.collectAsStateWithLifecycle()
+    val sleepTimerState by shellViewModel.sleepTimerState.collectAsStateWithLifecycle()
     var nowPlayingOpen by remember { mutableStateOf(false) }
     var queueOpen by remember { mutableStateOf(false) }
 
@@ -158,6 +159,14 @@ fun ResonateApp(shellViewModel: AppShellViewModel = hiltViewModel()) {
             onToggleLike = shellViewModel::toggleLike,
             onToggleDislike = shellViewModel::toggleDislike,
             onOpenQueue = { queueOpen = true },
+            sleepTimer = sleepTimerState,
+            onSleepTimer = { minutes ->
+                when (minutes) {
+                    null -> shellViewModel.cancelSleepTimer()
+                    0 -> shellViewModel.startSleepTimerAtEndOfTrack()
+                    else -> shellViewModel.startSleepTimer(minutes)
+                }
+            },
             isLiked = currentTrack?.rating == Rating.LIKED,
             isDisliked = currentTrack?.rating == Rating.DISLIKED,
         )

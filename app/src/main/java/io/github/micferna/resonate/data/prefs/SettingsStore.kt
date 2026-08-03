@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -42,6 +43,10 @@ data class Settings(
     /** Télécharge automatiquement hors-ligne tout morceau aimé. */
     val autoDownloadLiked: Boolean = false,
     val skipDislikedTracks: Boolean = true,
+    /** Aligne le volume des morceaux d'après leur gain ReplayGain. */
+    val normalizeVolume: Boolean = true,
+    val equalizerEnabled: Boolean = false,
+    val equalizerPreset: Int = 0,
     val lastUpdateCheckAt: Long = 0,
     /** Version dont l'utilisateur a explicitement refusé la mise à jour. */
     val dismissedUpdateTag: String = "",
@@ -70,6 +75,9 @@ class SettingsStore @Inject constructor(
             includePrereleases = prefs[Keys.INCLUDE_PRERELEASES] ?: false,
             autoDownloadLiked = prefs[Keys.AUTO_DOWNLOAD_LIKED] ?: false,
             skipDislikedTracks = prefs[Keys.SKIP_DISLIKED] ?: true,
+            normalizeVolume = prefs[Keys.NORMALIZE_VOLUME] ?: true,
+            equalizerEnabled = prefs[Keys.EQ_ENABLED] ?: false,
+            equalizerPreset = prefs[Keys.EQ_PRESET] ?: 0,
             lastUpdateCheckAt = prefs[Keys.LAST_UPDATE_CHECK] ?: 0,
             dismissedUpdateTag = prefs[Keys.DISMISSED_UPDATE_TAG].orEmpty(),
         )
@@ -98,6 +106,12 @@ class SettingsStore @Inject constructor(
 
     suspend fun setSkipDislikedTracks(value: Boolean) = put(Keys.SKIP_DISLIKED, value)
 
+    suspend fun setNormalizeVolume(value: Boolean) = put(Keys.NORMALIZE_VOLUME, value)
+
+    suspend fun setEqualizerEnabled(value: Boolean) = put(Keys.EQ_ENABLED, value)
+
+    suspend fun setEqualizerPreset(value: Int) = put(Keys.EQ_PRESET, value)
+
     suspend fun setLastUpdateCheckAt(value: Long) = put(Keys.LAST_UPDATE_CHECK, value)
 
     suspend fun dismissUpdate(tag: String) = put(Keys.DISMISSED_UPDATE_TAG, tag)
@@ -122,6 +136,9 @@ class SettingsStore @Inject constructor(
         val INCLUDE_PRERELEASES = booleanPreferencesKey("include_prereleases")
         val AUTO_DOWNLOAD_LIKED = booleanPreferencesKey("auto_download_liked")
         val SKIP_DISLIKED = booleanPreferencesKey("skip_disliked")
+        val NORMALIZE_VOLUME = booleanPreferencesKey("normalize_volume")
+        val EQ_ENABLED = booleanPreferencesKey("equalizer_enabled")
+        val EQ_PRESET = intPreferencesKey("equalizer_preset")
         val LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
         val DISMISSED_UPDATE_TAG = stringPreferencesKey("dismissed_update_tag")
     }

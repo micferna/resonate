@@ -2,6 +2,9 @@ package io.github.micferna.resonate.data.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import io.github.micferna.resonate.data.db.dao.PlaylistDao
@@ -47,7 +50,7 @@ object ResonateConverters {
         PlaylistEntity::class,
         PlaylistTrackEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(ResonateConverters::class)
@@ -58,5 +61,24 @@ abstract class ResonateDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "resonate.db"
+
+        /**
+         * Ajout du gain ReplayGain.
+         *
+         * Une migration explicite plutôt qu'une recréation destructive : la v0.1.2
+         * est publiée, des bibliothèques existent avec leurs appréciations et leurs
+         * compteurs d'écoute. La colonne est ajoutée à zéro, valeur neutre, et se
+         * remplira à mesure que la résolution des tags repassera sur les morceaux.
+         */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "ALTER TABLE tracks ADD COLUMN replayGainDb REAL NOT NULL DEFAULT 0",
+                )
+                // Les tags doivent être relus pour récupérer le gain des morceaux
+                // déjà indexés ; la tâche de fond s'en chargera par lots.
+                connection.execSQL("UPDATE tracks SET tagsResolved = 0")
+            }
+        }
     }
 }

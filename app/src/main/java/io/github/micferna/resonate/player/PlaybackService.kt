@@ -64,12 +64,17 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var playbackStateStore: PlaybackStateStore
 
+    @Inject lateinit var audioEffects: AudioEffects
+
+    @Inject lateinit var sleepTimer: SleepTimer
+
     @Inject @ApplicationScope lateinit var scope: CoroutineScope
 
     private var mediaSession: MediaLibrarySession? = null
     private var settingsJob: Job? = null
     private var recovery: PlaybackRecovery? = null
     private var skipDisliked: Boolean = true
+    private var normalizeVolume: Boolean = true
 
     /** Dernier échec de lecture, exposé aux contrôleurs via les extras de session. */
     private var lastFailure: PlaybackFailure? = null
@@ -111,8 +116,22 @@ class PlaybackService : MediaLibraryService() {
         // Lié au cycle de vie du service, et non à la portée applicative : sans cela,
         // la collecte survivrait à la destruction du service et s'accumulerait à
         // chaque redémarrage de la lecture.
+        sleepTimer.onExpire = { player.pause() }
+
         settingsJob = scope.launch {
-            settingsStore.settings.collect { skipDisliked = it.skipDislikedTracks }
+            settingsStore.settings.collect { settings ->
+                skipDisliked = settings.skipDislikedTracks
+                normalizeVolume = settings.normalizeVolume
+                withContext(Dispatchers.Main) {
+                    audioEffects.bind(
+                        player.audioSessionId,
+                        settings.equalizerEnabled,
+                        settings.equalizerPreset.toShort(),
+                    )
+                    audioEffects.update(settings.equalizerEnabled, settings.equalizerPreset.toShort())
+                    applyTrackVolume(player)
+                }
+            }
         }
 
         restoreLastQueue(player)
@@ -249,6 +268,9 @@ class PlaybackService : MediaLibraryService() {
         settingsJob = null
         recovery?.cancel()
         recovery = null
+        sleepTimer.onExpire = null
+        sleepTimer.cancel()
+        audioEffects.release()
         mediaSession?.run {
             player.release()
             release()
@@ -436,6 +458,25 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    /**
+     * Aligne le volume du morceau courant sur son gain ReplayGain.
+     *
+     * Le réglage agit sur le volume du lecteur plutôt que sur un effet système :
+     * c'est exact au décibel près, sans latence à la transition, et cela n'occupe
+     * aucun des emplacements d'effets audio que l'appareil compte en nombre limité.
+     */
+    private fun applyTrackVolume(player: Player) {
+        if (!normalizeVolume) {
+            player.volume = 1f
+            return
+        }
+        val mediaId = player.currentMediaItem?.mediaId ?: return
+        scope.launch {
+            val gain = trackDao.byId(mediaId)?.replayGainDb ?: 0f
+            withContext(Dispatchers.Main) { player.volume = replayGainToVolume(gain) }
+        }
+    }
+
     /** Appuyer deux fois sur « j'aime » retire le like plutôt que de le réappliquer. */
     private fun toggleRating(mediaId: String, target: Rating) {
         scope.launch {
@@ -479,6 +520,8 @@ class PlaybackService : MediaLibraryService() {
 
         /** Saute automatiquement ce que l'utilisateur a explicitement rejeté. */
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            applyTrackVolume(player)
+            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) sleepTimer.onTrackFinished()
             if (!skipDisliked || mediaItem == null) return
             if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) return
             if (mediaItem.ratingOrNeutral() != Rating.DISLIKED) return

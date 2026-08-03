@@ -77,6 +77,7 @@ data class TrackTagPatch(
     val tagsResolved: Boolean,
     val searchKey: String,
     val artworkUrl: String?,
+    val replayGainDb: Float,
 )
 
 /** Patch de l'état hors-ligne, piloté par le gestionnaire de téléchargements. */

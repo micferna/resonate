@@ -100,4 +100,14 @@ data class TrackEntity(
 
     /** Concaténation minuscule de titre/artiste/album, pour une recherche `LIKE` indexée. */
     val searchKey: String,
+
+    /**
+     * Gain ReplayGain du morceau, en décibels, tel qu'inscrit dans ses tags.
+     *
+     * Zéro signifie « pas d'information », ce qui est aussi la valeur neutre : un
+     * morceau sans tag est joué tel quel. Mélanger un album masterisé fort et un
+     * enregistrement discret produit sinon des écarts de volume d'un titre à
+     * l'autre — d'autant plus marqués que les sources sont hétérogènes.
+     */
+    val replayGainDb: Float = 0f,
 )

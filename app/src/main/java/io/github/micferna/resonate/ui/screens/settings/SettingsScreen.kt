@@ -151,6 +151,33 @@ fun SettingsScreen(
                 )
             }
 
+            Section("Son")
+            SwitchRow(
+                title = "Égaliser le volume",
+                subtitle = "Aligne les morceaux entre eux d'après leur gain ReplayGain. " +
+                    "Utile quand la bibliothèque mêle plusieurs sources et plusieurs époques.",
+                checked = settings.normalizeVolume,
+                onCheckedChange = viewModel::setNormalizeVolume,
+            )
+            SwitchRow(
+                title = "Égaliseur",
+                subtitle = if (viewModel.equalizerPresets.isEmpty()) {
+                    "Cet appareil ne propose pas d'égaliseur système."
+                } else {
+                    "Utilise l'égaliseur d'Android, accéléré par le matériel."
+                },
+                checked = settings.equalizerEnabled,
+                onCheckedChange = viewModel::setEqualizerEnabled,
+            )
+            if (settings.equalizerEnabled && viewModel.equalizerPresets.isNotEmpty()) {
+                ChoiceRow(
+                    label = "Préréglage",
+                    options = viewModel.equalizerPresets.map { it.index.toInt() to it.name },
+                    selected = settings.equalizerPreset,
+                    onSelect = viewModel::setEqualizerPreset,
+                )
+            }
+
             Section("Lecture")
             SwitchRow(
                 title = "Sauter les morceaux rejetés",
