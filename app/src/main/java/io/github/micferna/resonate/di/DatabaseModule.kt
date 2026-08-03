@@ -25,6 +25,23 @@ object DatabaseModule {
             // de lignes pendant que l'UI lit la bibliothèque. En mode journal classique,
             // chaque lot bloquerait les lectures et ferait saccader les listes.
             .addMigrations(ResonateDatabase.MIGRATION_1_2, ResonateDatabase.MIGRATION_2_3)
+            /*
+             * Retour à une version antérieure : la base est recréée au lieu de faire
+             * planter l'app.
+             *
+             * Les APK restent téléchargeables sur la page des Releases, et réinstaller
+             * une version précédente est le premier réflexe quand une nouvelle pose
+             * problème. Or l'ancienne ne connaît pas le schéma écrit par la récente :
+             * Room refuse d'ouvrir la base et lève une exception à chaque lancement,
+             * sans issue autre que l'effacement des données depuis les réglages
+             * d'Android — que personne ne devine.
+             *
+             * Perdre la bibliothèque locale est désagréable mais réparable : une
+             * ré-indexation la reconstitue, et Réglages > Sauvegarde et transfert
+             * permet de restaurer sources, playlists et appréciations. Une app qui ne
+             * démarre plus, elle, n'offre aucune porte de sortie.
+             */
+            .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .setJournalMode(androidx.room.RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
             .build()
 
