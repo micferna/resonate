@@ -6,6 +6,15 @@ rendre disponible hors-ligne quand vous le demandez.
 
 [![CI](https://github.com/micferna/resonate/actions/workflows/ci.yml/badge.svg)](https://github.com/micferna/resonate/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/micferna/resonate/actions/workflows/codeql.yml/badge.svg)](https://github.com/micferna/resonate/actions/workflows/codeql.yml)
+[![Dernière version](https://img.shields.io/github/v/release/micferna/resonate?label=version)](https://github.com/micferna/resonate/releases/latest)
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-informational)](LICENSE)
+
+| Bibliothèque | Lecteur | Sources | Réglages |
+|---|---|---|---|
+| ![Bibliothèque](docs/captures/01-bibliotheque.png) | ![Lecteur](docs/captures/02-lecteur.png) | ![Sources](docs/captures/03-sources.png) | ![Réglages](docs/captures/04-reglages.png) |
+
+<sub>Titres, artistes et pochettes floutés : ces captures montrent l'interface,
+pas la discothèque de qui les a prises.</sub>
 
 ---
 
