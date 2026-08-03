@@ -48,7 +48,10 @@ jobs:
           fi
 
       - name: Tests et analyse statique
-        run: ./gradlew testReleaseUnitTest lintRelease --no-daemon
+        # `testDebugUnitTest` et non une variante release : AGP ne génère pas de
+        # tâche de tests unitaires pour la variante release. Le code testé est le
+        # même ; `lintRelease`, lui, analyse bien la variante publiée.
+        run: ./gradlew testDebugUnitTest lintRelease --no-daemon
 
       - name: Restaurer le magasin de clés
         env:
