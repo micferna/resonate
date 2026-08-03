@@ -47,6 +47,16 @@ data class RemoteAudioFile(
      * `null` signifie qu'il faudra lire les tags du conteneur.
      */
     val metadata: RemoteMetadata? = null,
+
+    /**
+     * Dossier à afficher, quand il ne se déduit pas du chemin.
+     *
+     * La source locale adresse ses morceaux par identifiant MediaStore, pas par
+     * chemin : sans cette indication, tous ses titres se retrouveraient dans un
+     * unique dossier « Racine ». Les autres sources laissent ce champ nul, leur
+     * chemin portant déjà l'arborescence.
+     */
+    val folder: String? = null,
 )
 
 /** Résultat d'un test de connexion, affiché dans l'assistant d'ajout de source. */

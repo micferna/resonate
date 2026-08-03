@@ -50,7 +50,7 @@ object ResonateConverters {
         PlaylistEntity::class,
         PlaylistTrackEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(ResonateConverters::class)
@@ -78,6 +78,33 @@ abstract class ResonateDatabase : RoomDatabase() {
                 // Les tags doivent être relus pour récupérer le gain des morceaux
                 // déjà indexés ; la tâche de fond s'en chargera par lots.
                 connection.execSQL("UPDATE tracks SET tagsResolved = 0")
+            }
+        }
+
+        /**
+         * Ajout du dossier d'affichage.
+         *
+         * Les morceaux déjà indexés reçoivent le dossier déduit de leur chemin —
+         * exact pour les sources de fichiers. Ceux de la source locale, dont le
+         * chemin n'est qu'un identifiant MediaStore, seront corrigés à la
+         * prochaine indexation, que la migration déclenche en les marquant comme
+         * jamais vus.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "ALTER TABLE tracks ADD COLUMN folderPath TEXT NOT NULL DEFAULT '/'",
+                )
+                connection.execSQL(
+                    "UPDATE tracks SET folderPath = " +
+                        "rtrim(remotePath, replace(remotePath, '/', ''))",
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_tracks_folderPath ON tracks(folderPath)",
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_tracks_genre ON tracks(genre)",
+                )
             }
         }
     }

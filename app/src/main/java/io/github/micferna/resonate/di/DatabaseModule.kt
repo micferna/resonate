@@ -24,7 +24,7 @@ object DatabaseModule {
             // Journalisation WAL : l'indexation écrit par lots de plusieurs centaines
             // de lignes pendant que l'UI lit la bibliothèque. En mode journal classique,
             // chaque lot bloquerait les lectures et ferait saccader les listes.
-            .addMigrations(ResonateDatabase.MIGRATION_1_2)
+            .addMigrations(ResonateDatabase.MIGRATION_1_2, ResonateDatabase.MIGRATION_2_3)
             .setJournalMode(androidx.room.RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
             .build()
 

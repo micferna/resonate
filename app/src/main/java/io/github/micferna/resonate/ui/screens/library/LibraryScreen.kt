@@ -112,10 +112,23 @@ fun LibraryScreen(
                 AlbumList(state.albums, viewModel::openAlbum)
 
             state.focus == LibraryFocus.None && state.tab == LibraryTab.GENRES ->
-                SimpleList(
-                    entries = state.genres.map { it.genre to pluralize(it.trackCount, "titre") },
-                    onOpen = viewModel::openGenre,
-                )
+                if (state.genres.isEmpty()) {
+                    // Un onglet vide sans un mot passe pour une panne. Or l'absence
+                    // de genre vient presque toujours des fichiers eux-mêmes : les
+                    // morceaux récupérés en ligne n'en portent pratiquement jamais.
+                    EmptyState(
+                        icon = Icons.Filled.LibraryMusic,
+                        title = "Aucun genre renseigné",
+                        description = "Aucun morceau de votre bibliothèque ne porte de tag " +
+                            "de genre. C'est fréquent pour des fichiers récupérés en ligne. " +
+                            "Un serveur Subsonic, lui, fournit cette information.",
+                    )
+                } else {
+                    SimpleList(
+                        entries = state.genres.map { it.genre to pluralize(it.trackCount, "titre") },
+                        onOpen = viewModel::openGenre,
+                    )
+                }
 
             state.focus == LibraryFocus.None && state.tab == LibraryTab.FOLDERS ->
                 LazyColumn(contentPadding = MiniPlayerSpacing) {

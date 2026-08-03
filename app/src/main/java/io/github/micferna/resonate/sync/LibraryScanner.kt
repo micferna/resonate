@@ -116,6 +116,10 @@ class LibraryScanner @Inject constructor(
             }
             val searchKey = buildSearchKey(metadata.title, metadata.artist, metadata.album)
             val mimeType = AudioFile.mimeTypeOf(file.fileName)
+            // La source fournit son dossier quand son chemin n'en porte pas ;
+            // sinon on le déduit, séparateur final compris.
+            val folderPath = file.folder
+                ?: file.path.substringBeforeLast('/', "").let { if (it.isEmpty()) "/" else "$it/" }
 
             prepared.rows += TrackEntity(
                 id = id,
@@ -145,6 +149,7 @@ class LibraryScanner @Inject constructor(
                 addedAt = stamp,
                 lastSeenAt = stamp,
                 searchKey = searchKey,
+                folderPath = folderPath,
             )
 
             if (authoritative != null) {
@@ -165,6 +170,7 @@ class LibraryScanner @Inject constructor(
                     tagsResolved = true,
                     searchKey = searchKey,
                     lastSeenAt = stamp,
+                    folderPath = folderPath,
                 )
             } else {
                 prepared.seenPatches += TrackSeenPatch(

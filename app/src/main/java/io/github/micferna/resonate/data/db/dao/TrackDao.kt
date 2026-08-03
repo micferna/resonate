@@ -150,25 +150,18 @@ interface TrackDao {
     fun observeByGenre(genre: String): Flow<List<TrackEntity>>
 
     /**
-     * Dossiers contenant de la musique, dérivés des chemins distants.
+     * Dossiers contenant de la musique.
      *
-     * Le découpage se fait en SQL : remonter dix mille chemins pour n'en garder que
-     * les répertoires distincts serait du gaspillage.
-     *
-     * `rtrim(chemin, replace(chemin, '/', ''))` retire par la droite tous les
-     * caractères qui ne sont pas un séparateur, et s'arrête donc au dernier « / » —
-     * ce qui laisse exactement le dossier. SQLite n'ayant pas de fonction inverse
-     * ni d'expression régulière, c'est la formulation portable.
+     * Le regroupement porte sur une colonne indexée plutôt que sur une expression
+     * calculée : c'est plus rapide, et surtout cela fonctionne pour la source
+     * locale, dont le chemin n'est qu'un identifiant MediaStore sans arborescence.
      */
     @Query(
         """
-        SELECT
-            sourceId AS sourceId,
-            rtrim(remotePath, replace(remotePath, '/', '')) AS folder,
-            COUNT(*) AS trackCount
+        SELECT sourceId AS sourceId, folderPath AS folder, COUNT(*) AS trackCount
         FROM tracks
-        GROUP BY sourceId, folder
-        ORDER BY folder COLLATE NOCASE
+        GROUP BY sourceId, folderPath
+        ORDER BY folderPath COLLATE NOCASE
         """,
     )
     fun observeFolders(): Flow<List<FolderSummary>>
@@ -176,8 +169,8 @@ interface TrackDao {
     @Query(
         """
         SELECT * FROM tracks
-        WHERE sourceId = :sourceId AND remotePath LIKE :folder || '%'
-        ORDER BY remotePath COLLATE NOCASE
+        WHERE sourceId = :sourceId AND folderPath = :folder
+        ORDER BY discNumber, trackNumber, title COLLATE NOCASE
         """,
     )
     fun observeByFolder(sourceId: Long, folder: String): Flow<List<TrackEntity>>
