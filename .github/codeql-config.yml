@@ -1,9 +1,0 @@
-# Configuration de l'analyse CodeQL.
-name: Resonate
-
-paths-ignore:
-  # Code produit par KSP (Room, Hilt) et par AGP. Il n'est ni écrit ni
-  # modifiable ici : le signaler noierait les vraies alertes sous du bruit
-  # que seule une montée de version des générateurs peut corriger.
-  - '**/build/**'
-  - '**/generated/**'

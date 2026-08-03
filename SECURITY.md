@@ -22,8 +22,16 @@ l'index des téléchargements ou les journaux.
 
 ## Analyse statique
 
-CodeQL tourne à chaque poussée et une fois par semaine. Le code généré (KSP, AGP)
-est exclu : il n'est ni écrit ni modifiable ici.
+CodeQL tourne à chaque poussée et une fois par semaine, avec la suite
+`security-extended`.
+
+Le choix de cette suite plutôt que `security-and-quality` est délibéré : les deux
+couvrent les mêmes règles de sécurité, la seconde y ajoutant des règles de qualité
+conçues pour Java. Celles-ci se déclenchent sur des artefacts de la traduction
+Kotlin vers Java et sur le code produit par KSP, sans qu'aucune modification du
+source ne les éteigne — renommer les paramètres incriminés n'a rien changé. La
+qualité du code est couverte par Android Lint, configuré pour traiter tout
+avertissement comme une erreur.
 
 Quatre alertes sont écartées volontairement. Les voici avec leur raison — elles
 sont fermées dans l'onglet Security, ce document en tient le détail.
