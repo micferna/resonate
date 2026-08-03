@@ -9,6 +9,7 @@ import io.github.micferna.resonate.data.db.entity.SourceKind
 import io.github.micferna.resonate.data.repo.SourceDraft
 import io.github.micferna.resonate.data.repo.SourceRepository
 import io.github.micferna.resonate.source.ProbeResult
+import io.github.micferna.resonate.source.local.LocalConnector
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,15 +33,31 @@ data class EditorState(
      * secret : un partage SMB public ou un WebDAV anonyme sont des cas légitimes.
      */
     val canSave: Boolean
-        get() = draft.host.isNotBlank() &&
-            draft.port in 1..65_535 &&
-            (!draft.kind.requiresShare || draft.shareName.isNotBlank())
+        get() = when {
+            // Une source locale n'a rien à renseigner : ni serveur, ni identifiants.
+            draft.kind.isLocal -> true
+            else -> draft.host.isNotBlank() &&
+                draft.port in 1..65_535 &&
+                (!draft.kind.requiresShare || draft.shareName.isNotBlank())
+        }
 }
 
 @HiltViewModel
 class SourcesViewModel @Inject constructor(
     private val repository: SourceRepository,
+    private val localConnector: LocalConnector,
 ) : ViewModel() {
+
+    /** Autorisation d'accès aux fichiers audio de l'appareil, pour la source locale. */
+    private val _localAudioGranted = MutableStateFlow(localConnector.hasPermission())
+    val localAudioGranted: StateFlow<Boolean> = _localAudioGranted.asStateFlow()
+
+    /** Nom système de l'autorisation à demander, qui varie selon la version d'Android. */
+    val localAudioPermission: String get() = localConnector.requiredPermission
+
+    fun refreshLocalAudioPermission() {
+        _localAudioGranted.value = localConnector.hasPermission()
+    }
 
     val sources: StateFlow<List<SourceEntity>> = repository.observeSources()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())

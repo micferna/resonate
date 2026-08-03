@@ -9,6 +9,7 @@ import io.github.micferna.resonate.data.db.entity.Rating
 import io.github.micferna.resonate.data.db.entity.TrackEntity
 import io.github.micferna.resonate.data.prefs.SettingsStore
 import io.github.micferna.resonate.player.OfflineLibrary
+import io.github.micferna.resonate.source.SourceRegistry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -21,6 +22,7 @@ class LibraryRepository @Inject constructor(
     private val trackDao: TrackDao,
     private val offlineLibrary: OfflineLibrary,
     private val settingsStore: SettingsStore,
+    private val registry: SourceRegistry,
 ) {
 
     fun observeAllTracks(): Flow<List<TrackEntity>> = trackDao.observeAll()
@@ -72,7 +74,7 @@ class LibraryRepository @Inject constructor(
             // Retirer un like, en revanche, ne supprime rien : on peut vouloir garder
             // un morceau hors-ligne sans l'aimer pour autant.
             next == Rating.LIKED && track.offlineState == OfflineState.NONE &&
-                settingsStore.settings.first().autoDownloadLiked ->
+                isPinnable(track) && settingsStore.settings.first().autoDownloadLiked ->
                 offlineLibrary.download(track)
         }
     }
@@ -81,7 +83,15 @@ class LibraryRepository @Inject constructor(
 
     fun offlineBytes(): Long = offlineLibrary.occupiedBytes()
 
+    /**
+     * Un morceau local est déjà sur l'appareil : le « télécharger » en recopierait
+     * les octets dans le cache pour rien. L'action est donc sans effet pour lui.
+     */
+    fun isPinnable(track: TrackEntity): Boolean =
+        registry.find(track.sourceId)?.entity?.kind?.isLocal != true
+
     fun toggleOffline(track: TrackEntity) {
+        if (!isPinnable(track)) return
         when (track.offlineState) {
             OfflineState.DOWNLOADED, OfflineState.DOWNLOADING, OfflineState.QUEUED ->
                 offlineLibrary.remove(track.id)

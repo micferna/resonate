@@ -207,7 +207,6 @@ dependencies {
     implementation(libs.smbj)
     implementation(libs.bouncycastle.prov)
     implementation(libs.bouncycastle.pkix)
-    implementation(libs.eddsa)
     implementation(libs.slf4j.api)
 
     testImplementation(libs.junit)

@@ -29,6 +29,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,7 +56,14 @@ fun SourcesScreen(
 ) {
     val sources by viewModel.sources.collectAsStateWithLifecycle()
     val editor by viewModel.editor.collectAsStateWithLifecycle()
+    val localAudioGranted by viewModel.localAudioGranted.collectAsStateWithLifecycle()
     val snackbarHost = remember { SnackbarHostState() }
+
+    // Le résultat, accepté comme refusé, est simplement reporté dans l'état :
+    // l'écran se met à jour, sans insister ni bloquer l'utilisateur.
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { viewModel.refreshLocalAudioPermission() }
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHost.showSnackbar(it) }
@@ -112,6 +121,10 @@ fun SourcesScreen(
             onKindChange = viewModel::changeKind,
             onProbe = viewModel::probe,
             onSave = viewModel::save,
+            localAudioGranted = localAudioGranted,
+            onRequestAudioPermission = {
+                audioPermissionLauncher.launch(viewModel.localAudioPermission)
+            },
         )
     }
 }
@@ -138,7 +151,11 @@ private fun SourceCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = "${source.kind.label} · ${source.host}:${source.port}",
+                        text = if (source.kind.isLocal) {
+                            source.kind.label
+                        } else {
+                            "${source.kind.label} · ${source.host}:${source.port}"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -207,6 +224,7 @@ private fun SourceCard(
 /** Libellé lisible d'un protocole, pour l'interface. */
 val SourceKind.label: String
     get() = when (this) {
+        SourceKind.LOCAL -> "Musique de l'appareil"
         SourceKind.SFTP -> "SFTP / SSH"
         SourceKind.SMB -> "Partage SMB"
         SourceKind.WEBDAV -> "WebDAV / Nextcloud"

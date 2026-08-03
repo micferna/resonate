@@ -11,11 +11,14 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.ForegroundInfo
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import io.github.micferna.resonate.R
 import io.github.micferna.resonate.data.db.dao.SourceDao
+import io.github.micferna.resonate.data.prefs.SettingsStore
+import kotlinx.coroutines.flow.first
 
 /**
  * Indexe les sources en tâche de fond.
@@ -30,6 +33,8 @@ class ScanWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val scanner: LibraryScanner,
     private val sourceDao: SourceDao,
+    private val settingsStore: SettingsStore,
+    private val workScheduler: WorkScheduler,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -46,6 +51,13 @@ class ScanWorker @AssistedInject constructor(
 
         val failures = outcomes.filterNot { it.succeeded }
         val discovered = outcomes.sumOf { it.discovered }
+
+        // De nouveaux morceaux attendent peut-être que leurs tags soient lus :
+        // on réarme la tâche correspondante, qui se désarmera seule une fois la
+        // file épuisée.
+        if (discovered > 0) {
+            workScheduler.scheduleTagResolution(settingsStore.settings.first())
+        }
 
         return when {
             // Aucune source n'a répondu : très probablement un problème réseau
@@ -138,14 +150,23 @@ class ScanWorker @AssistedInject constructor(
  */
 @HiltWorker
 class TagResolutionWorker @AssistedInject constructor(
-    @Assisted context: Context,
+    @Assisted private val context: Context,
     @Assisted params: WorkerParameters,
     private val tagResolver: TagResolver,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val resolved = tagResolver.resolvePending()
-        return Result.success(Data.Builder().putInt(KEY_RESOLVED, resolved).build())
+        val processed = tagResolver.resolvePending()
+
+        // File vide : la tâche se désarme au lieu de se réveiller toutes les vingt
+        // minutes pour constater qu'il n'y a rien à faire. C'est l'indexation qui la
+        // réarmera lorsqu'elle découvrira de nouveaux morceaux — sur une bibliothèque
+        // stable, l'app ne se réveille plus du tout de ce fait.
+        if (processed == 0) {
+            WorkManager.getInstance(context).cancelUniqueWork(NAME)
+        }
+
+        return Result.success(Data.Builder().putInt(KEY_RESOLVED, processed).build())
     }
 
     companion object {

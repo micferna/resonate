@@ -9,6 +9,7 @@ import io.github.micferna.resonate.data.db.dao.SourceDao
 import io.github.micferna.resonate.data.db.dao.TrackDao
 import io.github.micferna.resonate.data.db.dao.TrackMetadataPatch
 import io.github.micferna.resonate.data.db.dao.TrackSeenPatch
+import io.github.micferna.resonate.data.db.entity.OfflineState
 import io.github.micferna.resonate.data.db.entity.SourceEntity
 import io.github.micferna.resonate.data.db.entity.TrackEntity
 import io.github.micferna.resonate.source.RemoteAudioFile
@@ -133,6 +134,14 @@ class LibraryScanner @Inject constructor(
                 mimeType = mimeType,
                 artworkUrl = metadata.artworkUrl,
                 tagsResolved = authoritative != null,
+                // Un fichier de l'appareil est déjà là : le compter comme
+                // disponible hors-ligne évite de le présenter comme du streaming
+                // et le fait apparaître dans l'onglet correspondant.
+                offlineState = if (source.kind.isLocal) {
+                    OfflineState.DOWNLOADED
+                } else {
+                    OfflineState.NONE
+                },
                 addedAt = stamp,
                 lastSeenAt = stamp,
                 searchKey = searchKey,

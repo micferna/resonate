@@ -19,6 +19,16 @@
     <!-- Les téléchargements interrompus par un redémarrage sont repris. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!--
+      Lecture de la musique déjà présente sur l'appareil. `READ_MEDIA_AUDIO` remplace
+      `READ_EXTERNAL_STORAGE` à partir d'Android 13 et ne donne accès qu'aux fichiers
+      audio ; l'ancienne autorisation est donc bornée aux versions antérieures.
+    -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <!-- Mise à jour de l'app depuis les Releases GitHub. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
@@ -35,6 +45,23 @@
         android:theme="@style/Theme.Resonate"
         tools:targetApi="37">
 
+        <!--
+          Signale à Android Auto que cette application sait fournir du média. La
+          navigation dans la bibliothèque est servie par PlaybackService, qui étend
+          MediaLibraryService.
+        -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+        <!--
+          Autorise l'affichage des pochettes en clair sur l'écran du véhicule, y
+          compris lorsqu'elles proviennent d'un serveur local en HTTP.
+        -->
+        <meta-data
+            android:name="com.google.android.gms.car.notification.SmallIcon"
+            android:resource="@drawable/ic_download" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -44,6 +71,16 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+              « Écoute … sur Resonate » dicté à l'Assistant, au volant ou ailleurs.
+              Android Auto exige cette déclaration d'une application média : sans
+              elle, la commande vocale ne parvient jamais à l'app.
+            -->
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 

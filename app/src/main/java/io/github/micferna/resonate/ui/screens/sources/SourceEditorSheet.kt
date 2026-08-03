@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -38,7 +39,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
 import io.github.micferna.resonate.data.db.entity.SecretKind
 import io.github.micferna.resonate.data.db.entity.SourceKind
 import io.github.micferna.resonate.data.repo.SourceDraft
@@ -47,11 +47,11 @@ import io.github.micferna.resonate.source.ProbeResult
 /**
  * Formulaire d'ajout ou de modification d'une source.
  *
- * Les champs affichés dépendent du protocole : demander un partage à un serveur
- * Subsonic ou un chemin racine à SMB n'aurait aucun sens et laisserait l'utilisateur
- * deviner quoi remplir. Le bouton « Tester » est mis en avant avant l'enregistrement,
- * car une erreur d'identifiant se diagnostique bien mieux ici que dans un rapport
- * d'indexation quinze minutes plus tard.
+ * Les champs affichés dépendent du type choisi : demander un partage à un serveur
+ * Subsonic, ou une adresse de serveur à la musique du téléphone, n'aurait aucun sens
+ * et laisserait l'utilisateur remplir du vide. Le bouton « Tester » est mis en avant
+ * avant l'enregistrement, car une erreur d'identifiant se diagnostique bien mieux ici
+ * que dans un rapport d'indexation un quart d'heure plus tard.
  */
 @Composable
 fun SourceEditorSheet(
@@ -61,6 +61,8 @@ fun SourceEditorSheet(
     onKindChange: (SourceKind) -> Unit,
     onProbe: () -> Unit,
     onSave: () -> Unit,
+    localAudioGranted: Boolean,
+    onRequestAudioPermission: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val draft = state.draft
@@ -101,107 +103,13 @@ fun SourceEditorSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = draft.host,
-                    onValueChange = { value -> onDraftChange { it.copy(host = value.trim()) } },
-                    label = { Text("Hôte") },
-                    placeholder = { Text("nas.local ou 192.168.1.20") },
-                    singleLine = true,
-                    modifier = Modifier.weight(2f),
+            if (draft.kind.isLocal) {
+                LocalAudioAccess(
+                    granted = localAudioGranted,
+                    onRequestPermission = onRequestAudioPermission,
                 )
-                OutlinedTextField(
-                    value = draft.port.toString(),
-                    onValueChange = { value ->
-                        val port = value.filter(Char::isDigit).take(5).toIntOrNull() ?: 0
-                        onDraftChange { it.copy(port = port) }
-                    },
-                    label = { Text("Port") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
-            if (draft.kind.supportsTls) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("HTTPS", style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            text = "À laisser activé sauf serveur local sans certificat.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = draft.useTls,
-                        onCheckedChange = { value -> onDraftChange { it.copy(useTls = value) } },
-                    )
-                }
-            }
-
-            OutlinedTextField(
-                value = draft.username,
-                onValueChange = { value -> onDraftChange { it.copy(username = value) } },
-                label = { Text("Identifiant") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            if (draft.kind == SourceKind.SFTP) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = draft.secretKind == SecretKind.PASSWORD,
-                        onClick = { onDraftChange { it.copy(secretKind = SecretKind.PASSWORD) } },
-                        label = { Text("Mot de passe") },
-                    )
-                    FilterChip(
-                        selected = draft.secretKind == SecretKind.SSH_PRIVATE_KEY,
-                        onClick = { onDraftChange { it.copy(secretKind = SecretKind.SSH_PRIVATE_KEY) } },
-                        label = { Text("Clé privée") },
-                    )
-                }
-            }
-
-            SecretField(state = state, onDraftChange = onDraftChange)
-
-            if (draft.kind == SourceKind.SFTP && draft.secretKind == SecretKind.SSH_PRIVATE_KEY) {
-                OutlinedTextField(
-                    value = draft.keyPassphrase.orEmpty(),
-                    onValueChange = { value ->
-                        onDraftChange { it.copy(keyPassphrase = value.ifEmpty { null }) }
-                    },
-                    label = { Text("Phrase de passe de la clé (si protégée)") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            if (draft.kind.requiresShare) {
-                OutlinedTextField(
-                    value = draft.shareName,
-                    onValueChange = { value -> onDraftChange { it.copy(shareName = value.trim()) } },
-                    label = { Text("Nom du partage") },
-                    placeholder = { Text("Musique") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            if (draft.kind != SourceKind.SUBSONIC) {
-                OutlinedTextField(
-                    value = draft.rootPath,
-                    onValueChange = { value -> onDraftChange { it.copy(rootPath = value) } },
-                    label = { Text(if (draft.kind.requiresShare) "Dossier dans le partage" else "Dossier racine") },
-                    placeholder = { Text("/") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            } else {
+                ServerFields(state = state, onDraftChange = onDraftChange)
             }
 
             state.probeResult?.let { ProbeFeedback(it) }
@@ -211,12 +119,11 @@ fun SourceEditorSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = onProbe,
-                    enabled = !state.probing && draft.host.isNotBlank(),
+                    enabled = !state.probing && (draft.kind.isLocal || draft.host.isNotBlank()),
                     modifier = Modifier.weight(1f),
                 ) {
                     if (state.probing) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.height(0.dp))
                     } else {
                         Text("Tester")
                     }
@@ -230,6 +137,161 @@ fun SourceEditorSheet(
                 }
             }
         }
+    }
+}
+
+/** Champs propres aux sources distantes : serveur, identifiants, emplacement. */
+@Composable
+private fun ServerFields(
+    state: EditorState,
+    onDraftChange: ((SourceDraft) -> SourceDraft) -> Unit,
+) {
+    val draft = state.draft
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(
+                value = draft.host,
+                onValueChange = { value -> onDraftChange { it.copy(host = value.trim()) } },
+                label = { Text("Hôte") },
+                placeholder = { Text("nas.local ou 192.168.1.20") },
+                singleLine = true,
+                modifier = Modifier.weight(2f),
+            )
+            OutlinedTextField(
+                value = draft.port.toString(),
+                onValueChange = { value ->
+                    val port = value.filter(Char::isDigit).take(5).toIntOrNull() ?: 0
+                    onDraftChange { it.copy(port = port) }
+                },
+                label = { Text("Port") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        if (draft.kind.supportsTls) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("HTTPS", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = "À laisser activé sauf serveur local sans certificat.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = draft.useTls,
+                    onCheckedChange = { value -> onDraftChange { it.copy(useTls = value) } },
+                )
+            }
+        }
+
+        OutlinedTextField(
+            value = draft.username,
+            onValueChange = { value -> onDraftChange { it.copy(username = value) } },
+            label = { Text("Identifiant") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        if (draft.kind == SourceKind.SFTP) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = draft.secretKind == SecretKind.PASSWORD,
+                    onClick = { onDraftChange { it.copy(secretKind = SecretKind.PASSWORD) } },
+                    label = { Text("Mot de passe") },
+                )
+                FilterChip(
+                    selected = draft.secretKind == SecretKind.SSH_PRIVATE_KEY,
+                    onClick = { onDraftChange { it.copy(secretKind = SecretKind.SSH_PRIVATE_KEY) } },
+                    label = { Text("Clé privée") },
+                )
+            }
+        }
+
+        SecretField(state = state, onDraftChange = onDraftChange)
+
+        if (draft.kind == SourceKind.SFTP && draft.secretKind == SecretKind.SSH_PRIVATE_KEY) {
+            OutlinedTextField(
+                value = draft.keyPassphrase.orEmpty(),
+                onValueChange = { value ->
+                    onDraftChange { it.copy(keyPassphrase = value.ifEmpty { null }) }
+                },
+                label = { Text("Phrase de passe de la clé (si protégée)") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        if (draft.kind.requiresShare) {
+            OutlinedTextField(
+                value = draft.shareName,
+                onValueChange = { value -> onDraftChange { it.copy(shareName = value.trim()) } },
+                label = { Text("Nom du partage") },
+                placeholder = { Text("Musique") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        if (draft.kind != SourceKind.SUBSONIC) {
+            OutlinedTextField(
+                value = draft.rootPath,
+                onValueChange = { value -> onDraftChange { it.copy(rootPath = value) } },
+                label = {
+                    Text(if (draft.kind.requiresShare) "Dossier dans le partage" else "Dossier racine")
+                },
+                placeholder = { Text("/") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/**
+ * Accès à la musique de l'appareil.
+ *
+ * Android exige une autorisation explicite pour lire les fichiers audio. On explique
+ * d'abord à quoi elle sert : une demande de permission surgissant sans contexte est
+ * précisément celle que les utilisateurs refusent.
+ */
+@Composable
+private fun LocalAudioAccess(granted: Boolean, onRequestPermission: () -> Unit) {
+    if (granted) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                text = "Accès aux fichiers audio accordé.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        return
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Resonate a besoin de votre autorisation pour lire les fichiers audio " +
+                "stockés sur ce téléphone. Elle ne donne accès qu'à la musique, à rien d'autre.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(onClick = onRequestPermission) { Text("Autoriser l'accès à la musique") }
     }
 }
 
@@ -329,6 +391,7 @@ private fun ProbeFeedback(result: ProbeResult) {
 
 private val SourceKind.shortLabel: String
     get() = when (this) {
+        SourceKind.LOCAL -> "Appareil"
         SourceKind.SFTP -> "SFTP"
         SourceKind.SMB -> "SMB"
         SourceKind.WEBDAV -> "WebDAV"
@@ -337,6 +400,9 @@ private val SourceKind.shortLabel: String
 
 private val SourceKind.hint: String
     get() = when (this) {
+        SourceKind.LOCAL ->
+            "La musique déjà stockée sur ce téléphone. Aucun serveur, aucun réseau : " +
+                "Android demandera simplement l'accès à vos fichiers audio."
         SourceKind.SFTP ->
             "Tout serveur SSH. La clé d'hôte est mémorisée à la première connexion et " +
                 "vérifiée ensuite, comme le fait la commande ssh."

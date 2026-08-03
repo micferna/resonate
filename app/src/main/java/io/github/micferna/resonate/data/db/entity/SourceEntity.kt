@@ -6,6 +6,8 @@ import androidx.room.PrimaryKey
 
 /** Protocole utilisé pour joindre une bibliothèque distante. */
 enum class SourceKind {
+    /** La musique déjà présente sur l'appareil, indexée via MediaStore. */
+    LOCAL,
     SFTP,
     SMB,
     WEBDAV,
@@ -14,10 +16,14 @@ enum class SourceKind {
 
     val defaultPort: Int
         get() = when (this) {
+            LOCAL -> 0
             SFTP -> 22
             SMB -> 445
             WEBDAV, SUBSONIC -> 443
         }
+
+    /** Une source locale n'a ni serveur, ni identifiants, ni chemin distant. */
+    val isLocal: Boolean get() = this == LOCAL
 
     /** Un partage SMB doit être nommé ; les autres protocoles n'en ont pas. */
     val requiresShare: Boolean get() = this == SMB

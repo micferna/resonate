@@ -20,9 +20,7 @@
 -dontwarn net.schmizz.sshj.**
 -dontwarn com.hierynomus.sshj.**
 
-# Signatures Ed25519, chargées par le même mécanisme de fabriques.
--keep class net.i2p.crypto.eddsa.** { *; }
--dontwarn net.i2p.crypto.eddsa.**
+# Ed25519 est fourni par BouncyCastle, déjà conservé plus bas.
 
 # --- SMB (SMBJ) -------------------------------------------------------------
 -keep class com.hierynomus.smbj.** { *; }

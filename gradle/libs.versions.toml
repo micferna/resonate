@@ -36,7 +36,6 @@ coil = "3.5.0"
 sshj = "0.40.0"
 smbj = "0.14.0"
 bouncycastle = "1.85"
-eddsa = "0.3.0"
 slf4j = "2.0.18"
 
 # Tests
@@ -112,7 +111,6 @@ sshj = { module = "com.hierynomus:sshj", version.ref = "sshj" }
 smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
 bouncycastle-prov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
-eddsa = { module = "net.i2p.crypto:eddsa", version.ref = "eddsa" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 
 # --- Tests ---

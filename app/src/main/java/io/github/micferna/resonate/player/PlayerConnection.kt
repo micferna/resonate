@@ -16,6 +16,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -70,26 +73,41 @@ class PlayerConnection @Inject constructor(
         controller = connected
         connected.addListener(StateListener())
         publish()
-        launch { trackPosition() }
+        launch { trackPositionWhileObserved() }
     }
 
     /**
-     * Le lecteur ne signale pas l'avancée du temps : seule la position est à
-     * rafraîchir périodiquement, tout le reste arrive par événements. On sonde donc
-     * quatre fois par seconde pendant la lecture — assez pour une barre de progression
-     * fluide — et on se met en veille dès la mise en pause, pour ne rien consommer
-     * quand rien ne bouge.
+     * Rafraîchit la position, mais seulement quand quelqu'un regarde.
+     *
+     * Le lecteur ne signale pas l'écoulement du temps : la position est la seule
+     * donnée à sonder, tout le reste arrive par événements. Or ce composant est un
+     * singleton lié au processus, pas à un écran : une boucle inconditionnelle
+     * continuerait de tourner musique en pause, application fermée, écran éteint —
+     * à ne rien produire d'autre que des réveils du processeur.
+     *
+     * [MutableStateFlow.subscriptionCount] dit exactement quand une interface est
+     * abonnée. Sans abonné, la boucle s'arrête complètement ; elle redémarre à la
+     * réouverture de l'app. Pendant la lecture en arrière-plan, c'est la
+     * notification média qui affiche la progression, alimentée par le service.
      */
-    private suspend fun trackPosition() {
-        while (true) {
-            val player = controller
-            if (player != null && player.isPlaying) {
-                publish()
-                delay(PLAYING_TICK_MS)
-            } else {
-                delay(IDLE_TICK_MS)
+    private suspend fun trackPositionWhileObserved() {
+        _state.subscriptionCount
+            .map { it > 0 }
+            .distinctUntilChanged()
+            .collectLatest { observed ->
+                if (!observed) return@collectLatest
+                while (true) {
+                    val player = controller
+                    if (player != null && player.isPlaying) {
+                        publish()
+                        delay(PLAYING_TICK_MS)
+                    } else {
+                        // En pause avec l'écran allumé : un battement par seconde
+                        // suffit à réagir à une reprise déclenchée ailleurs.
+                        delay(IDLE_TICK_MS)
+                    }
+                }
             }
-        }
     }
 
     // ------------------------------------------------------------------ commandes

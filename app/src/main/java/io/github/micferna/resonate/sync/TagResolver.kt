@@ -47,18 +47,20 @@ class TagResolver @Inject constructor(
 ) {
 
     /**
-     * Résout jusqu'à [limit] morceaux en attente.
+     * Traite jusqu'à [limit] morceaux en attente de lecture de tags.
      *
-     * @return le nombre de morceaux effectivement traités.
+     * @return le nombre de morceaux **traités**, succès comme échecs. Un fichier
+     *   illisible est marqué comme résolu pour ne pas revenir indéfiniment : compter
+     *   les seuls succès ferait croire à une file vide alors qu'il reste du travail,
+     *   et arrêterait prématurément la tâche périodique.
      */
     suspend fun resolvePending(limit: Int = DEFAULT_BATCH): Int = withContext(ioDispatcher) {
         val pending = trackDao.awaitingTagResolution(limit)
-        var resolved = 0
         for (track in pending) {
             currentCoroutineContext().ensureActive()
-            if (resolve(track)) resolved++
+            resolve(track)
         }
-        resolved
+        pending.size
     }
 
     private suspend fun resolve(track: TrackEntity): Boolean {

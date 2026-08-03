@@ -13,10 +13,12 @@ import io.github.micferna.resonate.player.PlayerUiState
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -49,6 +51,24 @@ class AppShellViewModel @Inject constructor(
             if (id == null) flowOf(null) else library.observeTrack(id)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
+
+    /**
+     * Lance une lecture à partir d'une requête dictée.
+     *
+     * Une requête vide — « mets de la musique » sans plus de précision — donne une
+     * sélection aléatoire de la bibliothèque plutôt qu'un silence : au volant,
+     * répondre quelque chose vaut mieux que ne rien faire.
+     */
+    fun playFromSearch(query: String) {
+        viewModelScope.launch {
+            val results = if (query.isBlank()) {
+                library.shuffleSeed()
+            } else {
+                library.search(query).first()
+            }
+            if (results.isNotEmpty()) player.play(results, 0)
+        }
+    }
 
     fun togglePlayPause() = player.togglePlayPause()
 

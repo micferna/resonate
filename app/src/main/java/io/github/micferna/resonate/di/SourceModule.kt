@@ -9,6 +9,7 @@ import dagger.multibindings.IntoSet
 import io.github.micferna.resonate.source.ResonateDataSourceFactory
 import io.github.micferna.resonate.source.SourceConnector
 import io.github.micferna.resonate.source.SourceRegistry
+import io.github.micferna.resonate.source.local.LocalConnector
 import io.github.micferna.resonate.source.sftp.SftpConnector
 import io.github.micferna.resonate.source.smb.SmbConnector
 import io.github.micferna.resonate.source.subsonic.SubsonicConnector
@@ -23,6 +24,8 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class SourceModule {
+
+    @Binds @IntoSet abstract fun local(connector: LocalConnector): SourceConnector
 
     @Binds @IntoSet abstract fun sftp(connector: SftpConnector): SourceConnector
 

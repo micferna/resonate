@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Déclare Resonate comme application média auprès d'Android Auto.
+
+  Sans ce fichier, l'app est simplement absente de l'écran de la voiture : le
+  système ne la propose que si elle annonce explicitement ce rôle.
+-->
+<automotiveApp>
+    <uses name="media" />
+</automotiveApp>

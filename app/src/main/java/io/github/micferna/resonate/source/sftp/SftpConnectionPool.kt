@@ -229,6 +229,9 @@ class SftpConnectionPool @Inject constructor() {
         const val TAG = "SftpPool"
         const val CONNECT_TIMEOUT_MS = 15_000
         const val READ_TIMEOUT_MS = 30_000
-        const val KEEP_ALIVE_SECONDS = 30
+        // Un paquet par minute suffit à traverser les NAT domestiques (délai
+        // d'expiration typique : plusieurs minutes) tout en divisant par deux les
+        // réveils de la radio pendant une lecture longue.
+        const val KEEP_ALIVE_SECONDS = 60
     }
 }

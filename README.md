@@ -11,14 +11,28 @@ rendre disponible hors-ligne quand vous le demandez.
 
 ## Ce que ça fait
 
-**Quatre façons de brancher votre musique**
+**Cinq façons de brancher votre musique**
 
-| Protocole | Ce que ça couvre | Métadonnées |
+| Source | Ce que ça couvre | Métadonnées |
 |---|---|---|
+| **Appareil** | La musique déjà sur le téléphone, via MediaStore. | Fournies par Android |
 | **SFTP / SSH** | N'importe quel serveur SSH. Mot de passe ou clé privée. | Lues dans les fichiers |
 | **SMB / CIFS** | Partages Windows, Samba, NAS Synology/QNAP. | Lues dans les fichiers |
 | **WebDAV** | Nextcloud, ownCloud, Seafile, `mod_dav`. | Lues dans les fichiers |
 | **Subsonic** | Navidrome, Airsonic, Gonic, Jellyfin. | Fournies par le serveur |
+
+Les sources se cumulent : la musique du téléphone et celle de trois serveurs
+cohabitent dans la même bibliothèque, les mêmes playlists et la même recherche.
+
+**Android Auto**
+
+- Bibliothèque parcourable depuis l'écran du véhicule : favoris, hors-ligne,
+  playlists, artistes, albums, ajouts récents, plus écoutés.
+- « Écoute … sur Resonate » dicté à l'Assistant.
+- Appui sur Lecture au démarrage du véhicule : la file repart de la dernière
+  écoute.
+- Les listes se construisent uniquement depuis la base locale — aucune requête
+  réseau ne fait patienter le conducteur devant un écran vide.
 
 **Écoute**
 
@@ -45,6 +59,18 @@ Un morceau rendu disponible hors-ligne est téléchargé par le gestionnaire de
 Media3 : il reprend après une coupure, respecte la contrainte « Wi-Fi uniquement »,
 survit à un redémarrage. Il est ensuite lu **par le même chemin de code** qu'un
 morceau diffusé — il n'y a pas de mode hors-ligne séparé qui pourrait diverger.
+
+**Autonomie**
+
+Trois choix pèsent l'essentiel de la consommation, et ils sont assumés :
+
+- La position de lecture n'est sondée que lorsqu'une interface la regarde. App
+  fermée ou en pause, plus aucune boucle ne tourne.
+- La mémoire tampon monte jusqu'à deux minutes d'avance. Chaque réveil de la
+  radio coûte bien plus que les octets transférés : mieux vaut de longues rafales
+  espacées qu'un filet continu.
+- La lecture des tags se désarme d'elle-même une fois la file épuisée, au lieu de
+  se réveiller toutes les vingt minutes pour constater qu'il n'y a rien à faire.
 
 **Mises à jour**
 
@@ -178,15 +204,16 @@ Secrets attendus par le dépôt :
 
 ```
 app/src/main/java/io/github/micferna/resonate/
-├── source/       Connecteurs distants. Un protocole = une implémentation de
+├── source/       Sources de musique. Une source = une implémentation de
 │                 SourceConnector : se tester, s'énumérer, se laisser lire en
 │                 accès aléatoire. Tout le reste de l'app ignore le protocole.
+│   ├── local/    MediaStore — la musique de l'appareil
 │   ├── sftp/     sshj — vérification de clé d'hôte, multiplexage des canaux
 │   ├── smb/      SMBJ — session partagée, lecture à décalage
 │   ├── webdav/   PROPFIND profondeur 1 + GET avec en-tête Range
 │   └── subsonic/ API REST, authentification par jeton salé
-├── player/       Service Media3, double cache (streaming évincé / hors-ligne
-│                 épinglé), gestionnaire de téléchargements
+├── player/       Service Media3, arborescence Android Auto, double cache
+│                 (streaming évincé / hors-ligne épinglé), téléchargements
 ├── data/         Room, chiffrement des identifiants, préférences, repositories
 ├── sync/         Indexation et résolution des tags en tâche de fond
 ├── update/       Releases GitHub, vérification d'empreinte, PackageInstaller
@@ -232,9 +259,11 @@ dans `SourceModule`** ; rien d'autre ne change.
 
 - **Android uniquement.** Le mécanisme de mise à jour repose sur l'installation
   d'APK, impossible sur iOS.
-- **Pas de navigation Android Auto.** La lecture et les contrôles fonctionnent
-  via la session média ; l'arborescence parcourable reste à écrire.
 - **Pas d'égaliseur** ni de normalisation du volume.
+- **Android Automotive OS** (le système embarqué directement dans certains
+  véhicules, sans téléphone) n'est pas ciblé : il demande une variante de build
+  distincte. Android Auto — la projection depuis le téléphone, de loin la plus
+  répandue — est pris en charge.
 - **NFS non pris en charge.** Android ne permet pas de monter un partage NFS sans
   root ; il faudrait embarquer un client NFS en espace utilisateur. Un serveur
   SFTP ou Samba sur la même machine est le contournement habituel.

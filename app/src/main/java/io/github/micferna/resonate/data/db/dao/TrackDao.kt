@@ -63,6 +63,14 @@ interface TrackDao {
     fun observeRecentlyAdded(limit: Int): Flow<List<TrackEntity>>
 
     /**
+     * Dernières écoutes, utilisées pour reconstituer une file quand la lecture est
+     * relancée depuis une surface qui n'a rien sélectionné — le bouton Lecture d'un
+     * autoradio au démarrage du véhicule, typiquement.
+     */
+    @Query("SELECT * FROM tracks WHERE lastPlayedAt IS NOT NULL ORDER BY lastPlayedAt DESC LIMIT :limit")
+    suspend fun recentlyPlayed(limit: Int): List<TrackEntity>
+
+    /**
      * Recherche par sous-chaîne sur [TrackEntity.searchKey], qui agrège titre, artiste et
      * album déjà normalisés en minuscules. Les morceaux dont le titre correspond
      * remontent avant ceux qui ne matchent que sur l'album.
