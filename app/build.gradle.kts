@@ -14,8 +14,8 @@ plugins {
  * Le workflow GitHub Actions dérive le tag `v<versionName>` de ces valeurs, et
  * l'updater in-app compare le `versionCode` local à celui publié dans la Release.
  */
-val appVersionCode = 3
-val appVersionName = "0.1.2"
+val appVersionCode = 4
+val appVersionName = "0.2.0"
 
 /**
  * Signature release.
