@@ -31,14 +31,14 @@ jobs:
           java-version: '17'
 
       - name: Préparer Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6.2.0
         with:
           # Le cache n'est alimenté que depuis la branche par défaut : une pull
           # request ne doit pas pouvoir empoisonner le cache des autres builds.
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Vérifier l'intégrité du wrapper Gradle
-        uses: gradle/actions/wrapper-validation@v4
+        uses: gradle/actions/wrapper-validation@v6.2.0
 
       - name: Tests unitaires
         run: ./gradlew testDebugUnitTest --no-daemon

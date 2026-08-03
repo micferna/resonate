@@ -41,7 +41,7 @@ jobs:
           config-file: ./.github/codeql-config.yml
 
       - name: Préparer Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Compiler
         run: ./gradlew assembleDebug --no-daemon

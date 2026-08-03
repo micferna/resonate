@@ -28,10 +28,10 @@ jobs:
           java-version: '17'
 
       - name: Préparer Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Vérifier l'intégrité du wrapper Gradle
-        uses: gradle/actions/wrapper-validation@v4
+        uses: gradle/actions/wrapper-validation@v6.2.0
 
       - name: Vérifier que le tag correspond à la version compilée
         env:
