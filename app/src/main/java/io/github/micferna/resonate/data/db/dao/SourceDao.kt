@@ -17,6 +17,9 @@ interface SourceDao {
     @Query("SELECT * FROM sources WHERE enabled = 1")
     suspend fun enabled(): List<SourceEntity>
 
+    @Query("SELECT * FROM sources ORDER BY id")
+    suspend fun observeAllOnce(): List<SourceEntity>
+
     @Query("SELECT * FROM sources WHERE id = :id")
     suspend fun byId(id: Long): SourceEntity?
 

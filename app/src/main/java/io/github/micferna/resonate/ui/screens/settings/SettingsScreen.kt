@@ -26,6 +26,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +57,17 @@ fun SettingsScreen(
     val update by viewModel.update.collectAsStateWithLifecycle()
     val snackbarHost = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    // Le sélecteur de fichiers du système : aucune permission de stockage requise,
+    // et l'utilisateur choisit lui-même où atterrit un fichier qui contient ses
+    // mots de passe.
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri -> uri?.let(viewModel::exportConfiguration) }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(viewModel::importConfiguration) }
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHost.showSnackbar(it) }
@@ -150,6 +163,37 @@ fun SettingsScreen(
                 subtitle = "Rend automatiquement disponible hors-ligne tout morceau aimé.",
                 checked = settings.autoDownloadLiked,
                 onCheckedChange = viewModel::setAutoDownloadLiked,
+            )
+
+            Section("Sauvegarde et transfert")
+            Text(
+                text = "Les sauvegardes automatiques d'Android sont désactivées : elles ne " +
+                    "transporteraient que des secrets scellés par une clé propre à cet " +
+                    "appareil, donc illisibles ailleurs. L'export ci-dessous est la voie " +
+                    "prévue pour changer de téléphone.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                TextButton(onClick = { exportLauncher.launch(viewModel.backupFileName) }) {
+                    Text("Exporter la configuration")
+                }
+                TextButton(onClick = { importLauncher.launch(arrayOf("application/json")) }) {
+                    Text("Importer")
+                }
+            }
+            Text(
+                text = "Le fichier exporté contient vos mots de passe et clés privées en " +
+                    "clair : ils doivent être relisibles sur le nouvel appareil. Rangez-le " +
+                    "en conséquence.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
 
             Section("Mises à jour")

@@ -156,6 +156,26 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE tagsResolved = 0 LIMIT :limit")
     suspend fun awaitingTagResolution(limit: Int): List<TrackEntity>
 
+    /**
+     * Morceaux portant une trace de l'utilisateur : appréciation ou écoutes.
+     * Les autres n'ont rien à sauvegarder — une ré-indexation les recrée à
+     * l'identique.
+     */
+    @Query(
+        """
+        SELECT * FROM tracks
+        WHERE sourceId = :sourceId AND (rating != 'NEUTRAL' OR playCount > 0)
+        """,
+    )
+    suspend fun exportableTracks(sourceId: Long): List<TrackEntity>
+
+    /**
+     * Réapplique appréciation et compteur d'écoute à un morceau restauré.
+     * Renvoie 0 si le morceau n'est pas encore indexé.
+     */
+    @Query("UPDATE tracks SET rating = :rating, playCount = :playCount WHERE id = :id")
+    suspend fun restoreUserData(id: String, rating: Rating, playCount: Int): Int
+
     // ------------------------------------------------------------------ écriture
 
     /**

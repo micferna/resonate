@@ -5,8 +5,9 @@
   La base contient les identifiants des serveurs, chiffrés par une clé qui ne quitte
   jamais le KeyStore de l'appareil : restaurée ailleurs, elle serait de toute façon
   indéchiffrable. Sauvegarder les caches audio (plusieurs gigaoctets) n'aurait pas
-  davantage de sens. L'export/import explicite depuis les réglages reste la voie
-  prévue pour migrer une configuration.
+  davantage de sens. Réglages > Sauvegarde et transfert propose un export/import
+  explicite, qui déchiffre les secrets à l'export et les rechiffre à l'import avec
+  la clé du nouvel appareil — seul moyen de les rendre réellement transférables.
 -->
 <full-backup-content>
     <exclude domain="database" path="." />

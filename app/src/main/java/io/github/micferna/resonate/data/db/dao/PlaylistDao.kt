@@ -46,6 +46,21 @@ interface PlaylistDao {
 
     @Query(
         """
+        SELECT p.id AS id, p.name AS name, p.description AS description,
+               p.updatedAt AS updatedAt,
+               COUNT(pt.trackId) AS trackCount,
+               COALESCE(SUM(t.durationMs), 0) AS totalDurationMs
+        FROM playlists p
+        LEFT JOIN playlist_tracks pt ON pt.playlistId = p.id
+        LEFT JOIN tracks t ON t.id = pt.trackId
+        GROUP BY p.id
+        ORDER BY p.name COLLATE NOCASE
+        """,
+    )
+    suspend fun observeSummariesOnce(): List<PlaylistSummary>
+
+    @Query(
+        """
         SELECT t.* FROM tracks t
         INNER JOIN playlist_tracks pt ON pt.trackId = t.id
         WHERE pt.playlistId = :playlistId
