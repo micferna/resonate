@@ -9,8 +9,12 @@ import io.github.micferna.resonate.data.prefs.NetworkPolicy
 import io.github.micferna.resonate.data.prefs.Settings
 import io.github.micferna.resonate.data.prefs.SettingsStore
 import io.github.micferna.resonate.data.prefs.ThemeMode
+import io.github.micferna.resonate.data.repo.ConfigurationTransfer
 import io.github.micferna.resonate.data.repo.LibraryRepository
+import io.github.micferna.resonate.player.AudioEffects
+import io.github.micferna.resonate.player.EqualizerPreset
 import io.github.micferna.resonate.sync.WorkScheduler
+import io.github.micferna.resonate.ui.pluralize
 import io.github.micferna.resonate.update.AvailableUpdate
 import io.github.micferna.resonate.update.UpdateChecker
 import io.github.micferna.resonate.update.UpdateInstaller
@@ -42,7 +46,12 @@ class SettingsViewModel @Inject constructor(
     private val workScheduler: WorkScheduler,
     private val updateChecker: UpdateChecker,
     private val updateInstaller: UpdateInstaller,
+    private val configurationTransfer: ConfigurationTransfer,
+    private val audioEffects: AudioEffects,
 ) : ViewModel() {
+
+    /** Nom proposé lors de l'enregistrement du fichier d'export. */
+    val backupFileName: String get() = configurationTransfer.suggestedFileName()
 
     val settings: StateFlow<Settings> = settingsStore.settings
         // Toute modification d'un réglage qui influe sur les tâches de fond doit être
@@ -101,6 +110,47 @@ class SettingsViewModel @Inject constructor(
     fun setSkipDisliked(enabled: Boolean) = edit { settingsStore.setSkipDislikedTracks(enabled) }
 
     fun setAutoDownloadLiked(enabled: Boolean) = edit { settingsStore.setAutoDownloadLiked(enabled) }
+
+    fun setNormalizeVolume(enabled: Boolean) = edit { settingsStore.setNormalizeVolume(enabled) }
+
+    fun setEqualizerEnabled(enabled: Boolean) = edit { settingsStore.setEqualizerEnabled(enabled) }
+
+    fun setEqualizerPreset(index: Int) = edit { settingsStore.setEqualizerPreset(index) }
+
+    /** Préréglages proposés par l'appareil ; la liste est vide s'il n'a pas d'égaliseur. */
+    val equalizerPresets: List<EqualizerPreset> get() = audioEffects.presets
+
+    // ------------------------------------------------------------------ transfert
+
+    fun exportConfiguration(target: android.net.Uri) {
+        viewModelScope.launch {
+            configurationTransfer.export(target, BuildConfig.VERSION_NAME)
+                .onSuccess { count ->
+                    _messages.tryEmit(
+                        "Configuration exportée : ${pluralize(count, "source")}. " +
+                            "Le fichier contient vos mots de passe en clair — rangez-le en lieu sûr.",
+                    )
+                }
+                .onFailure { _messages.tryEmit(it.message ?: "Export impossible.") }
+        }
+    }
+
+    fun importConfiguration(source: android.net.Uri) {
+        viewModelScope.launch {
+            configurationTransfer.import(source)
+                .onSuccess { outcome ->
+                    workScheduler.scanNow(null)
+                    _messages.tryEmit(
+                        "Importé : ${pluralize(outcome.sourcesAdded, "source")}, " +
+                            "${pluralize(outcome.playlistsAdded, "playlist")}, " +
+                            "${outcome.ratingsRestored} appréciation(s). " +
+                            "L'analyse démarre ; les appréciations des morceaux pas encore " +
+                            "indexés seront appliquées ensuite.",
+                    )
+                }
+                .onFailure { _messages.tryEmit(it.message ?: "Import impossible.") }
+        }
+    }
 
     fun rescanAll() {
         workScheduler.scanNow(null)

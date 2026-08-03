@@ -1,6 +1,7 @@
 package io.github.micferna.resonate.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -32,6 +33,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.micferna.resonate.data.db.entity.Rating
 import io.github.micferna.resonate.ui.components.MiniPlayer
+import io.github.micferna.resonate.ui.components.PlaybackFailureBanner
 import io.github.micferna.resonate.ui.screens.library.LibraryScreen
 import io.github.micferna.resonate.ui.screens.player.NowPlayingSheet
 import io.github.micferna.resonate.ui.screens.player.QueueSheet
@@ -58,6 +60,7 @@ fun ResonateApp(shellViewModel: AppShellViewModel = hiltViewModel()) {
     val navController = rememberNavController()
     val playerState by shellViewModel.playerState.collectAsStateWithLifecycle()
     val currentTrack by shellViewModel.currentTrack.collectAsStateWithLifecycle()
+    val sleepTimerState by shellViewModel.sleepTimerState.collectAsStateWithLifecycle()
     var nowPlayingOpen by remember { mutableStateOf(false) }
     var queueOpen by remember { mutableStateOf(false) }
 
@@ -121,15 +124,25 @@ fun ResonateApp(shellViewModel: AppShellViewModel = hiltViewModel()) {
                 composable(Destination.SETTINGS.route) { SettingsScreen() }
             }
 
-            MiniPlayer(
-                state = playerState,
-                onExpand = { nowPlayingOpen = true },
-                onTogglePlay = shellViewModel::togglePlayPause,
-                onNext = shellViewModel::next,
+            // Bandeau d'erreur et mini-lecteur forment un bloc solidaire, collé au
+            // bas de l'écran : le message concerne la lecture en cours, il doit
+            // apparaître juste au-dessus d'elle.
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = padding.calculateBottomPadding()),
-            )
+            ) {
+                PlaybackFailureBanner(
+                    message = playerState.failureMessage,
+                    retrying = playerState.retrying,
+                )
+                MiniPlayer(
+                    state = playerState,
+                    onExpand = { nowPlayingOpen = true },
+                    onTogglePlay = shellViewModel::togglePlayPause,
+                    onNext = shellViewModel::next,
+                )
+            }
         }
     }
 
@@ -146,6 +159,14 @@ fun ResonateApp(shellViewModel: AppShellViewModel = hiltViewModel()) {
             onToggleLike = shellViewModel::toggleLike,
             onToggleDislike = shellViewModel::toggleDislike,
             onOpenQueue = { queueOpen = true },
+            sleepTimer = sleepTimerState,
+            onSleepTimer = { minutes ->
+                when (minutes) {
+                    null -> shellViewModel.cancelSleepTimer()
+                    0 -> shellViewModel.startSleepTimerAtEndOfTrack()
+                    else -> shellViewModel.startSleepTimer(minutes)
+                }
+            },
             isLiked = currentTrack?.rating == Rating.LIKED,
             isDisliked = currentTrack?.rating == Rating.DISLIKED,
         )

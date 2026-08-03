@@ -9,6 +9,8 @@ import io.github.micferna.resonate.data.prefs.Settings
 import io.github.micferna.resonate.data.prefs.SettingsStore
 import io.github.micferna.resonate.data.repo.LibraryRepository
 import io.github.micferna.resonate.player.PlayerConnection
+import io.github.micferna.resonate.player.SleepTimer
+import io.github.micferna.resonate.player.SleepTimerState
 import io.github.micferna.resonate.player.PlayerUiState
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,8 +33,17 @@ import javax.inject.Inject
 class AppShellViewModel @Inject constructor(
     private val player: PlayerConnection,
     private val library: LibraryRepository,
+    private val sleepTimer: SleepTimer,
     settingsStore: SettingsStore,
 ) : ViewModel() {
+
+    val sleepTimerState: StateFlow<SleepTimerState> = sleepTimer.state
+
+    fun startSleepTimer(minutes: Int) = sleepTimer.start(minutes * 60_000L)
+
+    fun startSleepTimerAtEndOfTrack() = sleepTimer.startUntilEndOfTrack()
+
+    fun cancelSleepTimer() = sleepTimer.cancel()
 
     val playerState: StateFlow<PlayerUiState> = player.state
 

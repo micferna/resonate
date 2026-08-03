@@ -4,6 +4,9 @@ import android.content.Context
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
+import androidx.media3.extractor.metadata.id3.TextInformationFrame
+import androidx.media3.extractor.metadata.vorbis.VorbisComment
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.inspector.MetadataRetriever
@@ -21,6 +24,9 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.IOException
+import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -63,6 +69,15 @@ class TagResolver @Inject constructor(
         pending.size
     }
 
+    /**
+     * Entrées de métadonnées brutes du dernier fichier lu.
+     *
+     * `populateFromMetadata` ne retient que ce que Media3 sait modéliser ; le gain
+     * ReplayGain n'en fait pas partie. On garde donc les entrées d'origine, le temps
+     * de les inspecter.
+     */
+    private val rawMetadata = mutableListOf<Metadata>()
+
     private suspend fun resolve(track: TrackEntity): Boolean {
         val (metadata, durationUs) = try {
             read(track)
@@ -98,9 +113,75 @@ class TagResolver @Inject constructor(
                 durationMs = if (durationUs > 0) durationUs / 1000 else track.durationMs,
                 tagsResolved = true,
                 searchKey = buildSearchKey(title, artist, album),
+                artworkUrl = extractArtwork(track, metadata) ?: track.artworkUrl,
+                replayGainDb = extractReplayGain(rawMetadata),
             ),
         )
         return true
+    }
+
+    /**
+     * Extrait la pochette embarquée et la range sur l'appareil.
+     *
+     * Sans cela, une bibliothèque SFTP, SMB ou WebDAV n'affiche que des icônes
+     * grises : ces protocoles servent des fichiers, pas des métadonnées, et l'image
+     * ne se trouve qu'à l'intérieur du conteneur. Media3 la remonte au même moment
+     * que les tags, donc sans requête réseau supplémentaire — la refuser reviendrait
+     * à jeter une donnée déjà téléchargée.
+     *
+     * L'image est écrite une fois dans le stockage privé de l'app et référencée par
+     * son chemin. Les octets ne transitent pas par la base : y stocker des images
+     * ferait grossir chaque requête sur la bibliothèque.
+     *
+     * Les morceaux d'un même album partagent la même pochette : elle est nommée
+     * d'après l'album, pas d'après le morceau, ce qui évite d'écrire quinze fois la
+     * même image pour un disque de quinze titres.
+     */
+    private fun extractArtwork(track: TrackEntity, metadata: MediaMetadata): String? {
+        val data = metadata.artworkData ?: return null
+        if (data.isEmpty()) return null
+
+        return try {
+            val directory = File(context.filesDir, ARTWORK_DIR).apply { mkdirs() }
+            val target = File(directory, artworkFileName(track))
+            if (!target.exists()) target.writeBytes(data)
+            target.toURI().toString()
+        } catch (error: IOException) {
+            Log.d(TAG, "Pochette non enregistrée pour ${track.remotePath}", error)
+            null
+        }
+    }
+
+    /** Nom déterministe, dérivé de l'album pour être partagé par ses morceaux. */
+    private fun artworkFileName(track: TrackEntity): String {
+        val key = "${track.sourceId}/${track.albumArtist}/${track.album}"
+        val digest = MessageDigest.getInstance("SHA-256").digest(key.toByteArray())
+        return digest.take(16).joinToString("") { "%02x".format(it) } + ".img"
+    }
+
+    /**
+     * Lit le gain ReplayGain dans les tags bruts.
+     *
+     * Media3 ne l'expose pas dans `MediaMetadata` : il faut parcourir les entrées
+     * de métadonnées telles qu'elles sortent du conteneur. Deux écritures coexistent
+     * selon le format — commentaire Vorbis pour FLAC et Ogg, trame TXXX pour MP3 —
+     * mais la clé et la valeur se ressemblent assez pour un traitement commun.
+     */
+    private fun extractReplayGain(entries: List<Metadata>): Float {
+        for (metadata in entries) {
+            for (index in 0 until metadata.length()) {
+                val (key, value) = when (val entry = metadata.get(index)) {
+                    is VorbisComment -> entry.key to entry.value
+                    is TextInformationFrame -> entry.description.orEmpty() to entry.values.firstOrNull().orEmpty()
+                    else -> continue
+                }
+                if (!key.equals(REPLAY_GAIN_KEY, ignoreCase = true)) continue
+                // Format « -7.15 dB » : on ne garde que le nombre.
+                val gain = value.trim().removeSuffix("dB").trim().toFloatOrNull() ?: continue
+                return gain.coerceIn(MIN_GAIN_DB, MAX_GAIN_DB)
+            }
+        }
+        return 0f
     }
 
     private suspend fun read(track: TrackEntity): Pair<MediaMetadata, Long> {
@@ -111,10 +192,14 @@ class TagResolver @Inject constructor(
         return retriever.use { reader ->
             val trackGroups = reader.retrieveTrackGroups().await()
             val builder = MediaMetadata.Builder()
+            rawMetadata.clear()
             for (groupIndex in 0 until trackGroups.length) {
                 val group = trackGroups.get(groupIndex)
                 for (formatIndex in 0 until group.length) {
-                    group.getFormat(formatIndex).metadata?.let(builder::populateFromMetadata)
+                    group.getFormat(formatIndex).metadata?.let { metadata ->
+                        builder.populateFromMetadata(metadata)
+                        rawMetadata += metadata
+                    }
                 }
             }
             val durationUs = runCatching { reader.retrieveDurationUs().await() }.getOrDefault(0L)
@@ -138,11 +223,21 @@ class TagResolver @Inject constructor(
             durationMs = durationMs,
             tagsResolved = true,
             searchKey = buildSearchKey(title, artist, album),
+            // Aucun tag lisible, donc aucune pochette à en tirer : on conserve ce
+            // qui était déjà là plutôt que de l'effacer.
+            artworkUrl = artworkUrl,
+            replayGainDb = replayGainDb,
         )
     }
 
     private companion object {
         const val TAG = "TagResolver"
         const val DEFAULT_BATCH = 60
+        const val ARTWORK_DIR = "artwork"
+        const val REPLAY_GAIN_KEY = "replaygain_track_gain"
+
+        /** Bornes larges : au-delà, le tag est manifestement erroné. */
+        const val MIN_GAIN_DB = -30f
+        const val MAX_GAIN_DB = 15f
     }
 }

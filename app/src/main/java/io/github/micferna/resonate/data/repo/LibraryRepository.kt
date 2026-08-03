@@ -2,6 +2,8 @@ package io.github.micferna.resonate.data.repo
 
 import io.github.micferna.resonate.data.db.dao.AlbumSummary
 import io.github.micferna.resonate.data.db.dao.ArtistSummary
+import io.github.micferna.resonate.data.db.dao.FolderSummary
+import io.github.micferna.resonate.data.db.dao.GenreSummary
 import io.github.micferna.resonate.data.db.dao.LibraryStats
 import io.github.micferna.resonate.data.db.dao.TrackDao
 import io.github.micferna.resonate.data.db.entity.OfflineState
@@ -30,6 +32,16 @@ class LibraryRepository @Inject constructor(
     fun observeArtists(): Flow<List<ArtistSummary>> = trackDao.observeArtists()
 
     fun observeAlbums(): Flow<List<AlbumSummary>> = trackDao.observeAlbums()
+
+    fun observeGenres(): Flow<List<GenreSummary>> = trackDao.observeGenres()
+
+    fun observeFolders(): Flow<List<FolderSummary>> = trackDao.observeFolders()
+
+    fun observeTracksOfGenre(genre: String): Flow<List<TrackEntity>> =
+        trackDao.observeByGenre(genre)
+
+    fun observeTracksOfFolder(sourceId: Long, folder: String): Flow<List<TrackEntity>> =
+        trackDao.observeByFolder(sourceId, folder)
 
     fun observeTracksOfArtist(artist: String): Flow<List<TrackEntity>> =
         trackDao.observeByArtist(artist)

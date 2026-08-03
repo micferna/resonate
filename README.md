@@ -51,14 +51,23 @@ cohabitent dans la même bibliothèque, les mêmes playlists et la même recherc
   précède, y compris en SFTP et en SMB.
 - Cache de streaming borné, plus un espace hors-ligne épinglé qui n'est jamais
   évincé automatiquement.
-- File de lecture réordonnable, aléatoire, répétition.
+- File de lecture réordonnable, aléatoire, répétition, **sauvegardée** : fermer
+  l'app ne fait pas perdre sa place.
+- **Reprise automatique** après une coupure réseau, avec des délais croissants.
+  Un tunnel ou un NAS qui s'endort n'arrête plus la musique définitivement.
+- **Égalisation du volume** entre morceaux d'après leur gain ReplayGain, et
+  égaliseur système avec préréglages.
+- **Minuterie d'arrêt**, à durée fixe ou à la fin du morceau en cours.
 
 **Organisation**
 
 - J'aime / je n'aime pas, avec saut automatique des morceaux rejetés.
 - Playlists : création, réordonnancement, renommage, téléchargement en bloc.
 - Recherche instantanée sur titre, artiste et album.
-- Onglets Titres, Artistes, Albums, Aimés, Hors-ligne, Récents, Plus écoutés.
+- Onglets Titres, Artistes, Albums, Aimés, Hors-ligne, Récents, Plus écoutés,
+  Genres et Dossiers — l'arborescence des fichiers porte souvent une organisation
+  que les tags ne reflètent pas.
+- Tri des listes par artiste, titre, date d'ajout ou durée.
 - Compteurs d'écoute et de saut, alimentés seulement au-delà de 30 secondes
   d'écoute réelle.
 
@@ -86,6 +95,15 @@ Trois choix pèsent l'essentiel de la consommation, et ils sont assumés :
 L'app consulte les Releases de ce dépôt, prévient par notification, vérifie
 l'empreinte SHA-256 publiée, puis passe la main au gestionnaire de paquets
 d'Android. Rien ne s'installe sans votre confirmation explicite.
+
+**Sauvegarde et transfert**
+
+Les sauvegardes automatiques d'Android sont désactivées : elles ne
+transporteraient que des secrets scellés par une clé propre à l'appareil, donc
+illisibles ailleurs. **Réglages → Sauvegarde et transfert** exporte à la place un
+fichier JSON contenant sources, playlists, appréciations et compteurs d'écoute,
+réimportable sur un autre téléphone. Les secrets y sont en clair — c'est la seule
+façon de les rendre transférables, et l'app le dit sans détour.
 
 ---
 
@@ -275,7 +293,9 @@ dans `SourceModule`** ; rien d'autre ne change.
 
 - **Android uniquement.** Le mécanisme de mise à jour repose sur l'installation
   d'APK, impossible sur iOS.
-- **Pas d'égaliseur** ni de normalisation du volume.
+- **Pas de fondu enchaîné** : ExoPlayer ne le propose pas, l'obtenir demande deux
+  lecteurs ou un processeur audio maison.
+- **Pas de paroles**, pas de scrobbling, pas de Chromecast, pas de widget.
 - **Android Automotive OS** (le système embarqué directement dans certains
   véhicules, sans téléphone) n'est pas ciblé : il demande une variante de build
   distincte. Android Auto — la projection depuis le téléphone, de loin la plus

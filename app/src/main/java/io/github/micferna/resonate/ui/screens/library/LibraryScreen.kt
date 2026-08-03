@@ -14,11 +14,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -30,6 +38,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -101,6 +111,48 @@ fun LibraryScreen(
             state.focus == LibraryFocus.None && state.tab == LibraryTab.ALBUMS ->
                 AlbumList(state.albums, viewModel::openAlbum)
 
+            state.focus == LibraryFocus.None && state.tab == LibraryTab.GENRES ->
+                SimpleList(
+                    entries = state.genres.map { it.genre to pluralize(it.trackCount, "titre") },
+                    onOpen = viewModel::openGenre,
+                )
+
+            state.focus == LibraryFocus.None && state.tab == LibraryTab.FOLDERS ->
+                LazyColumn(contentPadding = MiniPlayerSpacing) {
+                    items(state.folders, key = { "${it.sourceId}${it.folder}" }) { folder ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.openFolder(folder) }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Filled.Folder,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    text = folder.folder.trimEnd('/').substringAfterLast('/')
+                                        .ifBlank { "Racine" },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = "${folder.folder} · ${pluralize(folder.trackCount, "titre")}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
+
             else -> TrackList(state, viewModel, currentTrackId)
         }
     }
@@ -110,12 +162,17 @@ fun LibraryScreen(
 @Composable
 private fun LibraryTopBar(state: LibraryUiState, viewModel: LibraryViewModel) {
     val focus = state.focus
+    var sortOpen by remember { mutableStateOf(false) }
     TopAppBar(
         title = {
             Text(
                 text = when (focus) {
                     is LibraryFocus.Artist -> focus.name
                     is LibraryFocus.Album -> focus.name
+                    is LibraryFocus.Genre -> focus.name
+                    // Le nom du dossier suffit : le chemin complet déborderait.
+                    is LibraryFocus.Folder -> focus.path.trimEnd('/').substringAfterLast('/')
+                        .ifBlank { "Racine" }
                     LibraryFocus.None -> "Bibliothèque"
                 },
                 maxLines = 1,
@@ -136,8 +193,52 @@ private fun LibraryTopBar(state: LibraryUiState, viewModel: LibraryViewModel) {
             IconButton(onClick = viewModel::rescanAll) {
                 Icon(Icons.Filled.Refresh, contentDescription = "Réanalyser les sources")
             }
+            Box {
+                IconButton(onClick = { sortOpen = true }) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Trier")
+                }
+                DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+                    TrackSort.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = option.label,
+                                    color = if (option == state.sort) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                            },
+                            onClick = { viewModel.selectSort(option); sortOpen = false },
+                        )
+                    }
+                }
+            }
         },
     )
+}
+
+/** Liste simple d'entrées « titre + sous-titre », partagée par plusieurs onglets. */
+@Composable
+private fun SimpleList(entries: List<Pair<String, String>>, onOpen: (String) -> Unit) {
+    LazyColumn(contentPadding = MiniPlayerSpacing) {
+        items(entries, key = { it.first }) { (label, subtitle) ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpen(label) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                Text(label, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }
 
 @Composable

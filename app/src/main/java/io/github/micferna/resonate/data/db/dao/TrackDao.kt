@@ -25,6 +25,23 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE id = :id")
     fun observeById(id: String): Flow<TrackEntity?>
 
+    @Query("SELECT * FROM tracks WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<String>): List<TrackEntity>
+
+    /**
+     * Morceaux d'une file, remis dans l'ordre demandé.
+     *
+     * SQLite rend les lignes dans l'ordre qui l'arrange, pas dans celui de la clause
+     * `IN`. Or une file de lecture *est* un ordre : le reconstituer ici évite que la
+     * restauration ne mélange les morceaux. Les identifiants sans correspondance —
+     * fichiers supprimés depuis — disparaissent simplement de la file.
+     */
+    suspend fun byIdsInOrder(ids: List<String>): List<TrackEntity> {
+        if (ids.isEmpty()) return emptyList()
+        val byId = byIds(ids).associateBy { it.id }
+        return ids.mapNotNull(byId::get)
+    }
+
     @Query(
         """
         SELECT * FROM tracks
@@ -120,6 +137,53 @@ interface TrackDao {
 
     @Query(
         """
+        SELECT genre AS genre, COUNT(*) AS trackCount
+        FROM tracks
+        WHERE genre != ''
+        GROUP BY genre
+        ORDER BY genre COLLATE NOCASE
+        """,
+    )
+    fun observeGenres(): Flow<List<GenreSummary>>
+
+    @Query("SELECT * FROM tracks WHERE genre = :genre ORDER BY artist COLLATE NOCASE, album COLLATE NOCASE")
+    fun observeByGenre(genre: String): Flow<List<TrackEntity>>
+
+    /**
+     * Dossiers contenant de la musique, dérivés des chemins distants.
+     *
+     * Le découpage se fait en SQL : remonter dix mille chemins pour n'en garder que
+     * les répertoires distincts serait du gaspillage.
+     *
+     * `rtrim(chemin, replace(chemin, '/', ''))` retire par la droite tous les
+     * caractères qui ne sont pas un séparateur, et s'arrête donc au dernier « / » —
+     * ce qui laisse exactement le dossier. SQLite n'ayant pas de fonction inverse
+     * ni d'expression régulière, c'est la formulation portable.
+     */
+    @Query(
+        """
+        SELECT
+            sourceId AS sourceId,
+            rtrim(remotePath, replace(remotePath, '/', '')) AS folder,
+            COUNT(*) AS trackCount
+        FROM tracks
+        GROUP BY sourceId, folder
+        ORDER BY folder COLLATE NOCASE
+        """,
+    )
+    fun observeFolders(): Flow<List<FolderSummary>>
+
+    @Query(
+        """
+        SELECT * FROM tracks
+        WHERE sourceId = :sourceId AND remotePath LIKE :folder || '%'
+        ORDER BY remotePath COLLATE NOCASE
+        """,
+    )
+    fun observeByFolder(sourceId: Long, folder: String): Flow<List<TrackEntity>>
+
+    @Query(
+        """
         SELECT COUNT(*) AS trackCount,
                COUNT(DISTINCT artist) AS artistCount,
                COUNT(DISTINCT album) AS albumCount,
@@ -138,6 +202,26 @@ interface TrackDao {
     /** Morceaux dont les tags n'ont jamais été lus, à traiter par l'indexeur de tags. */
     @Query("SELECT * FROM tracks WHERE tagsResolved = 0 LIMIT :limit")
     suspend fun awaitingTagResolution(limit: Int): List<TrackEntity>
+
+    /**
+     * Morceaux portant une trace de l'utilisateur : appréciation ou écoutes.
+     * Les autres n'ont rien à sauvegarder — une ré-indexation les recrée à
+     * l'identique.
+     */
+    @Query(
+        """
+        SELECT * FROM tracks
+        WHERE sourceId = :sourceId AND (rating != 'NEUTRAL' OR playCount > 0)
+        """,
+    )
+    suspend fun exportableTracks(sourceId: Long): List<TrackEntity>
+
+    /**
+     * Réapplique appréciation et compteur d'écoute à un morceau restauré.
+     * Renvoie 0 si le morceau n'est pas encore indexé.
+     */
+    @Query("UPDATE tracks SET rating = :rating, playCount = :playCount WHERE id = :id")
+    suspend fun restoreUserData(id: String, rating: Rating, playCount: Int): Int
 
     // ------------------------------------------------------------------ écriture
 
