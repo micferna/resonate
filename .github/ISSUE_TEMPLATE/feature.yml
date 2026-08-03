@@ -1,0 +1,17 @@
+name: Demande de fonctionnalité
+description: Proposer une évolution
+labels: [évolution]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Le besoin
+      description: Décrivez la situation concrète, pas la solution technique.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Piste envisagée
+      description: Facultatif.

@@ -1,0 +1,8 @@
+# Toute modification demande la relecture du propriétaire du dépôt.
+*       @micferna
+
+# Ces fichiers touchent à la sécurité de la chaîne de publication : la clé de
+# signature, les secrets, ce qui est exécuté avec accès au dépôt.
+/.github/workflows/    @micferna
+/.github/dependabot.yml @micferna
+/SECURITY.md           @micferna

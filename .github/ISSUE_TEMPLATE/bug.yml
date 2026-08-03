@@ -1,0 +1,59 @@
+name: Anomalie
+description: Signaler un comportement incorrect
+labels: [anomalie]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de ne pas signaler ici une faille de sécurité : ouvrez un
+        [avis privé](https://github.com/micferna/resonate/security/advisories/new).
+
+  - type: input
+    id: version
+    attributes:
+      label: Version de Resonate
+      description: Visible dans Réglages, en haut de l'écran.
+      placeholder: "0.1.2"
+    validations:
+      required: true
+
+  - type: input
+    id: android
+    attributes:
+      label: Appareil et version d'Android
+      placeholder: "Motorola moto g14, Android 14"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: Type de source concerné
+      options:
+        - Musique de l'appareil
+        - SFTP / SSH
+        - SMB / CIFS
+        - WebDAV / Nextcloud
+        - Subsonic / Navidrome
+        - Sans rapport avec une source
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: Ce qui se passe
+      description: Et ce que vous attendiez à la place.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Comment le reproduire
+      placeholder: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true

@@ -90,8 +90,15 @@ d'Android. Rien ne s'installe sans votre confirmation explicite.
    ```
 3. Ouvrez le fichier sur votre téléphone et autorisez l'installation depuis cette
    source lorsque Android le demande.
+4. Google Play Protect affichera « Play Protect n'a jamais vu d'appli de ce
+   développeur auparavant ». C'est attendu : l'application est signée par une clé
+   personnelle, inconnue de Google puisqu'elle n'est pas distribuée par le Play
+   Store. Choisissez **Installer quand même**. L'avertissement disparaît une fois
+   la réputation du certificat établie.
 
 Les mises à jour suivantes se font depuis l'app, dans **Réglages → Mises à jour**.
+L'app vérifie l'empreinte SHA-256 publiée avant d'installer quoi que ce soit, puis
+laisse Android demander votre confirmation.
 
 **Android 8.0 (API 26) minimum.** iOS n'est pas concerné : Apple interdit
 l'installation d'applications hors de l'App Store, ce qui rend impossible le
