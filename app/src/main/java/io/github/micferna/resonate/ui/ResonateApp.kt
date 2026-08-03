@@ -64,6 +64,26 @@ fun ResonateApp(shellViewModel: AppShellViewModel = hiltViewModel()) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination
 
+    /**
+     * Sélectionne un onglet.
+     *
+     * **Toute** navigation vers un onglet doit passer par ici, y compris depuis un
+     * bouton à l'intérieur d'un écran. Un `navigate()` direct empilerait la
+     * destination *au-dessus* de l'onglet courant ; l'appui suivant sur la barre du
+     * bas sauvegarderait alors cette pile sous l'onglet de départ, puis la
+     * restaurerait — l'onglet Bibliothèque rouvrait ainsi indéfiniment l'écran
+     * Sources, sans plus aucun moyen de revenir à la musique.
+     */
+    fun selectTab(route: String) {
+        navController.navigate(route) {
+            // Empêche l'empilement de copies d'un même écran quand on fait des
+            // allers-retours dans la barre du bas.
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -71,17 +91,7 @@ fun ResonateApp(shellViewModel: AppShellViewModel = hiltViewModel()) {
                     val selected = currentRoute?.hierarchy?.any { it.route == destination.route } == true
                     NavigationBarItem(
                         selected = selected,
-                        onClick = {
-                            navController.navigate(destination.route) {
-                                // Empêche l'empilement de copies d'un même écran quand
-                                // on fait des allers-retours dans la barre du bas.
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { selectTab(destination.route) },
                         icon = { Icon(destination.icon, contentDescription = null) },
                         label = { Text(destination.label) },
                     )
@@ -97,7 +107,7 @@ fun ResonateApp(shellViewModel: AppShellViewModel = hiltViewModel()) {
             ) {
                 composable(Destination.LIBRARY.route) {
                     LibraryScreen(
-                        onOpenSources = { navController.navigate(Destination.SOURCES.route) },
+                        onOpenSources = { selectTab(Destination.SOURCES.route) },
                         currentTrackId = playerState.currentTrackId,
                     )
                 }

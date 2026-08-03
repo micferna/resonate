@@ -112,7 +112,11 @@ class SourceRepository @Inject constructor(
     private fun SourceDraft.toEntity(existing: SourceEntity?): SourceEntity = SourceEntity(
         id = existing?.id ?: 0,
         kind = kind,
-        displayName = displayName.trim().ifBlank { host.ifBlank { kind.name } },
+        // Une source locale n'a pas d'hôte : sans ce cas, elle s'afficherait
+        // « LOCAL », le nom interne de l'énumération.
+        displayName = displayName.trim().ifBlank {
+            if (kind.isLocal) "Musique de l'appareil" else host.ifBlank { kind.name }
+        },
         host = host.trim(),
         port = port,
         username = username.trim(),
