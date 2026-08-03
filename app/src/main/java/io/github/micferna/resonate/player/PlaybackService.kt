@@ -37,6 +37,7 @@ import io.github.micferna.resonate.di.PlaybackDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -73,8 +74,19 @@ class PlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private var settingsJob: Job? = null
     private var recovery: PlaybackRecovery? = null
+    private var queuePersister: QueuePersister? = null
     private var skipDisliked: Boolean = true
     private var normalizeVolume: Boolean = true
+
+    /**
+     * Vrai pendant la restauration de la file.
+     *
+     * `setMediaItems` émet ses événements avant que la position de départ ne soit
+     * appliquée : sans ce garde-fou, la sauvegarde déclenchée par ces événements
+     * réécrirait la position à zéro et effacerait précisément ce qu'on est en train
+     * de restaurer.
+     */
+    private var restoring = false
 
     /** Dernier échec de lecture, exposé aux contrôleurs via les extras de session. */
     private var lastFailure: PlaybackFailure? = null
@@ -102,7 +114,7 @@ class PlaybackService : MediaLibraryService() {
             .build()
 
         player.addListener(PlaybackStatsRecorder(player))
-        player.addListener(QueuePersister(player))
+        queuePersister = QueuePersister(player).also(player::addListener)
         recovery = PlaybackRecovery(player, scope) { failure ->
             lastFailure = failure
             publishFailure(failure)
@@ -153,14 +165,19 @@ class PlaybackService : MediaLibraryService() {
 
             withContext(Dispatchers.Main) {
                 if (player.mediaItemCount > 0) return@withContext
-                player.setMediaItems(
-                    tracks.map(TrackEntity::toMediaItem),
-                    saved.index.coerceIn(0, tracks.lastIndex),
-                    saved.positionMs,
-                )
-                player.shuffleModeEnabled = saved.shuffleEnabled
-                player.repeatMode = saved.repeatMode
-                player.prepare()
+                restoring = true
+                try {
+                    player.setMediaItems(
+                        tracks.map(TrackEntity::toMediaItem),
+                        saved.index.coerceIn(0, tracks.lastIndex),
+                        saved.positionMs,
+                    )
+                    player.shuffleModeEnabled = saved.shuffleEnabled
+                    player.repeatMode = saved.repeatMode
+                    player.prepare()
+                } finally {
+                    restoring = false
+                }
             }
         }
     }
@@ -185,13 +202,18 @@ class PlaybackService : MediaLibraryService() {
     /**
      * Note la file et la position à chaque changement notable.
      *
-     * On écrit sur les événements plutôt qu'à intervalle régulier : un minuteur
-     * réveillerait le processeur en permanence, alors que les moments qui comptent
-     * — changement de morceau, pause, saut — sont rares et parfaitement identifiés.
+     * Les moments qui comptent — changement de morceau, pause, saut — sont rares et
+     * parfaitement identifiés : ils déclenchent une écriture immédiate. Mais ils ne
+     * suffisent pas, car il ne s'en produit aucun entre le début d'un morceau et sa
+     * fin ; un relevé périodique complète donc les événements pendant la lecture
+     * seule (voir [onIsPlayingChanged]).
      */
     private inner class QueuePersister(private val player: Player) : Player.Listener {
 
+        private var ticker: Job? = null
+
         override fun onEvents(player: Player, events: Player.Events) {
+            if (restoring) return
             if (!events.containsAny(
                     Player.EVENT_MEDIA_ITEM_TRANSITION,
                     Player.EVENT_TIMELINE_CHANGED,
@@ -204,6 +226,48 @@ class PlaybackService : MediaLibraryService() {
                 return
             }
             persist()
+        }
+
+        /**
+         * Enregistre aussi la position pendant la lecture.
+         *
+         * Les événements ne suffisent pas : entre le début d'un morceau et sa fin, il
+         * ne s'en produit aucun. Le processus tué en cours d'écoute — ce que fait
+         * Android sans prévenir — reprenait donc au début du morceau.
+         *
+         * Le rythme est lâche, et le coût nul : pendant la lecture, le processeur est
+         * de toute façon éveillé pour décoder l'audio. À l'arrêt, la boucle s'arrête
+         * aussi, elle ne réveille donc jamais rien.
+         */
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            ticker?.cancel()
+            ticker = if (isPlaying) {
+                scope.launch(Dispatchers.Main) {
+                    while (true) {
+                        delay(POSITION_SAVE_INTERVAL_MS)
+                        if (!restoring) persist()
+                    }
+                }
+            } else {
+                null
+            }
+        }
+
+        /**
+         * Dernier relevé avant la mise à mort du service.
+         *
+         * Appelé pendant `onDestroy`, tant que le lecteur est encore vivant : sans lui,
+         * une fermeture propre — mise en pause puis balayage hors des récentes — perdrait
+         * l'écart accumulé depuis le dernier tic. La sauvegarde est lancée sur la portée
+         * applicative, qui survit au service, sinon elle serait annulée avant d'écrire.
+         *
+         * La file vide n'est pas enregistrée : ce serait effacer la reprise au moment
+         * précis où l'on cherche à la préserver.
+         */
+        fun stop() {
+            ticker?.cancel()
+            ticker = null
+            if (!restoring && player.mediaItemCount > 0) persist()
         }
 
         private fun persist() {
@@ -268,6 +332,8 @@ class PlaybackService : MediaLibraryService() {
         settingsJob = null
         recovery?.cancel()
         recovery = null
+        queuePersister?.stop()
+        queuePersister = null
         sleepTimer.onExpire = null
         sleepTimer.cancel()
         audioEffects.release()
@@ -540,5 +606,8 @@ class PlaybackService : MediaLibraryService() {
         private const val MIN_BUFFER_MS = 60_000
         private const val MAX_BUFFER_MS = 120_000
         private const val MAX_BUFFER_BYTES = 32 * 1024 * 1024
+
+        /** Perdre au pire quinze secondes d'avancement est imperceptible. */
+        private const val POSITION_SAVE_INTERVAL_MS = 15_000L
     }
 }
