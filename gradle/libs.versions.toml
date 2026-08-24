@@ -31,7 +31,7 @@ coroutines = "1.11.0"
 serialization = "1.11.0"
 
 # Réseau / images
-okhttp = "5.4.0"
+okhttp = "5.5.0"
 coil = "3.5.0"
 
 # Protocoles distants
