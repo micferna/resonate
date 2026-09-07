@@ -38,7 +38,7 @@ coil = "3.5.0"
 sshj = "0.40.0"
 smbj = "0.14.0"
 bouncycastle = "1.85"
-slf4j = "2.0.18"
+slf4j = "2.0.19"
 
 # Tests
 junit = "4.13.2"
